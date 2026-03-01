@@ -9,7 +9,7 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/content/status-badge";
-import { TopicBadge } from "@/components/content/topic-badge";
+import { TopicEditor } from "@/components/content/topic-editor";
 import { TranscriptSection } from "@/components/content/transcript-section";
 import { useContentItem } from "@/hooks/use-content";
 
@@ -19,7 +19,7 @@ export default function ContentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { data: item } = useContentItem(id);
+  const { data: item, mutate } = useContentItem(id);
   const router = useRouter();
 
   if (!item) {
@@ -74,13 +74,11 @@ export default function ContentDetailPage({
         </a>
       </div>
 
-      {item.topics.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {item.topics.map((t) => (
-            <TopicBadge key={t} topic={t} />
-          ))}
-        </div>
-      )}
+      <TopicEditor
+        contentId={id}
+        topics={item.topics}
+        onUpdated={() => mutate()}
+      />
 
       {item.error && (
         <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
