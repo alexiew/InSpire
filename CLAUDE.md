@@ -13,7 +13,7 @@ npm run dev
 
 - Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, SWR
 - File-based JSON storage (`data/videos.json`)
-- YouTube transcript extraction via `youtube-transcript` package
+- YouTube transcript extraction via `summarize` CLI (`@steipete/summarize`)
 - Summarization via `claude --print` CLI (uses Max plan, no API costs)
 - Vitest for testing
 

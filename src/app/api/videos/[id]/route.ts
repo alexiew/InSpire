@@ -4,17 +4,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getVideo, deleteVideo } from "@/lib/videos";
 
-export function GET(
+export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  return params.then(({ id }) => {
-    const video = getVideo(id);
-    if (!video) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-    return NextResponse.json(video);
-  });
+  const { id } = await params;
+  const video = getVideo(id);
+  if (!video) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  return NextResponse.json(video);
 }
 
 export async function DELETE(

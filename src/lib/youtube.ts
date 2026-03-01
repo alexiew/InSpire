@@ -1,7 +1,7 @@
 // ABOUTME: YouTube video utilities for URL parsing, metadata, and transcript extraction.
-// ABOUTME: Uses oEmbed API for metadata and youtube-transcript package for transcripts.
+// ABOUTME: Uses oEmbed API for metadata and summarize CLI for transcripts.
 
-import { YoutubeTranscript } from "youtube-transcript";
+import { execFile } from "child_process";
 
 export function extractVideoId(url: string): string | null {
   if (!url) return null;
@@ -45,7 +45,25 @@ export async function fetchMetadata(videoId: string): Promise<VideoMetadata> {
   };
 }
 
-export async function fetchTranscript(videoId: string): Promise<string> {
-  const segments = await YoutubeTranscript.fetchTranscript(videoId);
-  return segments.map((s) => s.text).join(" ");
+export function fetchTranscript(videoId: string): Promise<string> {
+  const url = `https://www.youtube.com/watch?v=${videoId}`;
+  return new Promise((resolve, reject) => {
+    execFile(
+      "summarize",
+      [url, "--youtube", "auto", "--extract"],
+      { maxBuffer: 10 * 1024 * 1024 },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(stderr || error.message));
+          return;
+        }
+        const transcript = stdout.trim();
+        if (!transcript) {
+          reject(new Error("Empty transcript returned"));
+          return;
+        }
+        resolve(transcript);
+      }
+    );
+  });
 }
