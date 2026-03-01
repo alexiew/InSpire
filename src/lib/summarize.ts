@@ -3,19 +3,18 @@
 
 import { spawn } from "child_process";
 
-function cleanEnv(): Record<string, string> {
-  const env: Record<string, string> = {};
-  for (const [key, value] of Object.entries(process.env)) {
+function cleanEnv(): NodeJS.ProcessEnv {
+  const env: Record<string, string | undefined> = { ...process.env };
+  for (const key of Object.keys(env)) {
     if (
-      value != null &&
-      !key.startsWith("CLAUDE_CODE_") &&
-      key !== "CLAUDE_ENTRY_POINT" &&
-      key !== "CLAUDECODE"
+      key.startsWith("CLAUDE_CODE_") ||
+      key === "CLAUDE_ENTRY_POINT" ||
+      key === "CLAUDECODE"
     ) {
-      env[key] = value;
+      delete env[key];
     }
   }
-  return env;
+  return env as NodeJS.ProcessEnv;
 }
 
 export function summarize(title: string, transcript: string): Promise<string> {
