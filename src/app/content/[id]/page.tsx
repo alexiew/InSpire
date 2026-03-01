@@ -6,15 +6,11 @@
 import { use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Trash2, ChevronsUpDown } from "lucide-react";
+import { ArrowLeft, ExternalLink, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { StatusBadge } from "@/components/content/status-badge";
 import { TopicBadge } from "@/components/content/topic-badge";
+import { TranscriptSection } from "@/components/content/transcript-section";
 import { useContentItem } from "@/hooks/use-content";
 
 export default function ContentDetailPage({
@@ -129,19 +125,7 @@ export default function ContentDetailPage({
       )}
 
       {item.transcript && (
-        <Collapsible>
-          <CollapsibleTrigger asChild>
-            <Button variant="outline" className="w-full justify-between">
-              Full Transcript
-              <ChevronsUpDown className="h-4 w-4" />
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="mt-2 rounded-md border p-4 text-sm whitespace-pre-wrap text-muted-foreground max-h-96 overflow-y-auto">
-              {item.transcript}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
+        <TranscriptSection transcript={item.transcript} />
       )}
 
       {item.status === "processing" && (
