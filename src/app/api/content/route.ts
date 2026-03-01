@@ -1,16 +1,16 @@
-// ABOUTME: API route for listing and submitting videos.
-// ABOUTME: GET returns all videos, POST submits a YouTube URL for processing.
+// ABOUTME: API route for listing and submitting content.
+// ABOUTME: GET returns all content, POST submits a YouTube URL for processing.
 
 import { NextRequest, NextResponse } from "next/server";
-import { listVideos, createVideo } from "@/lib/videos";
+import { listContent, createContent } from "@/lib/content";
 import { extractVideoId } from "@/lib/youtube";
-import { processVideo } from "@/lib/process-video";
+import { processContent } from "@/lib/process-content";
 
 export const dynamic = "force-dynamic";
 
 export function GET() {
-  const videos = listVideos();
-  return NextResponse.json(videos);
+  const items = listContent();
+  return NextResponse.json(items);
 }
 
 export async function POST(request: NextRequest) {
@@ -29,10 +29,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const video = createVideo(url, videoId);
+  const item = createContent(url, videoId, "youtube");
 
   // Fire-and-forget processing
-  processVideo(video.id).catch(() => {});
+  processContent(item.id).catch(() => {});
 
-  return NextResponse.json(video, { status: 201 });
+  return NextResponse.json(item, { status: 201 });
 }

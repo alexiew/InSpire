@@ -1,5 +1,5 @@
-// ABOUTME: Detail page for a single video with summary and transcript.
-// ABOUTME: Shows metadata, AI summary, collapsible transcript, and delete action.
+// ABOUTME: Detail page for a single content item with summary and transcript.
+// ABOUTME: Shows metadata, topics, claims, people, and collapsible transcript.
 
 "use client";
 
@@ -13,19 +13,20 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { StatusBadge } from "@/components/videos/status-badge";
-import { useVideo } from "@/hooks/use-videos";
+import { StatusBadge } from "@/components/content/status-badge";
+import { TopicBadge } from "@/components/content/topic-badge";
+import { useContentItem } from "@/hooks/use-content";
 
-export default function VideoDetailPage({
+export default function ContentDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { data: video } = useVideo(id);
+  const { data: item } = useContentItem(id);
   const router = useRouter();
 
-  if (!video) {
+  if (!item) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-muted-foreground">Loading...</p>
@@ -34,8 +35,8 @@ export default function VideoDetailPage({
   }
 
   async function handleDelete() {
-    if (!confirm("Delete this video?")) return;
-    await fetch(`/api/videos/${id}`, { method: "DELETE" });
+    if (!confirm("Delete this content?")) return;
+    await fetch(`/api/content/${id}`, { method: "DELETE" });
     router.push("/");
   }
 
@@ -57,17 +58,17 @@ export default function VideoDetailPage({
       <div className="space-y-2">
         <div className="flex items-start justify-between gap-4">
           <h1 className="text-2xl font-bold">
-            {video.title || "Processing..."}
+            {item.title || "Processing..."}
           </h1>
-          <StatusBadge status={video.status} />
+          <StatusBadge status={item.status} />
         </div>
 
-        {video.author && (
-          <p className="text-muted-foreground">{video.author}</p>
+        {item.author && (
+          <p className="text-muted-foreground">{item.author}</p>
         )}
 
         <a
-          href={video.url}
+          href={item.url}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
@@ -77,22 +78,57 @@ export default function VideoDetailPage({
         </a>
       </div>
 
-      {video.error && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
-          <p className="text-sm text-destructive">{video.error}</p>
+      {item.topics.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {item.topics.map((t) => (
+            <TopicBadge key={t} topic={t} />
+          ))}
         </div>
       )}
 
-      {video.summary && (
+      {item.error && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
+          <p className="text-sm text-destructive">{item.error}</p>
+        </div>
+      )}
+
+      {item.summary && (
         <div className="space-y-2">
           <h2 className="text-lg font-semibold">Summary</h2>
           <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-            {video.summary}
+            {item.summary}
           </div>
         </div>
       )}
 
-      {video.transcript && (
+      {item.claims.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold">Key Claims</h2>
+          <ul className="list-disc list-inside space-y-1 text-sm">
+            {item.claims.map((claim, i) => (
+              <li key={i}>{claim}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {item.people.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold">People</h2>
+          <div className="flex flex-wrap gap-2">
+            {item.people.map((person) => (
+              <span
+                key={person}
+                className="text-sm bg-muted px-2 py-1 rounded"
+              >
+                {person}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {item.transcript && (
         <Collapsible>
           <CollapsibleTrigger asChild>
             <Button variant="outline" className="w-full justify-between">
@@ -102,15 +138,15 @@ export default function VideoDetailPage({
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="mt-2 rounded-md border p-4 text-sm whitespace-pre-wrap text-muted-foreground max-h-96 overflow-y-auto">
-              {video.transcript}
+              {item.transcript}
             </div>
           </CollapsibleContent>
         </Collapsible>
       )}
 
-      {video.status === "processing" && (
+      {item.status === "processing" && (
         <p className="text-sm text-muted-foreground text-center animate-pulse">
-          Processing video... This may take a minute.
+          Processing content... This may take a minute.
         </p>
       )}
     </div>

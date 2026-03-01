@@ -1,23 +1,23 @@
-// ABOUTME: Displays the processing status of a video as a colored badge.
+// ABOUTME: Displays the processing status of a content item as a colored badge.
 // ABOUTME: Shows processing (yellow), ready (green), or error (red).
 
 import { Badge } from "@/components/ui/badge";
-import type { VideoStatus } from "@/lib/videos";
+import type { ContentStatus } from "@/lib/content";
 
-const variants: Record<VideoStatus, "default" | "secondary" | "destructive"> = {
+const variants: Record<ContentStatus, "default" | "secondary" | "destructive"> = {
   processing: "secondary",
   ready: "default",
   error: "destructive",
 };
 
-const labels: Record<VideoStatus, string> = {
+const labels: Record<ContentStatus, string> = {
   processing: "Processing",
   ready: "Ready",
   error: "Error",
 };
 
 interface StatusBadgeProps {
-  status: VideoStatus;
+  status: ContentStatus;
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {

@@ -4,6 +4,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import path from "path";
 import { listContent } from "./content";
+import { slugify } from "./utils";
 
 export interface Topic {
   slug: string;
@@ -40,14 +41,7 @@ function writeData(data: TopicsData): void {
   writeFileSync(dataPath, JSON.stringify(data, null, 2) + "\n", "utf-8");
 }
 
-export function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-}
+export { slugify } from "./utils";
 
 export function rebuildTopicIndex(): void {
   const items = listContent();

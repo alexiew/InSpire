@@ -1,5 +1,5 @@
 // ABOUTME: Form for submitting a YouTube URL for processing.
-// ABOUTME: Validates input and posts to the videos API.
+// ABOUTME: Validates input and posts to the content API.
 
 "use client";
 
@@ -22,7 +22,7 @@ export function UrlForm({ onSubmitted }: UrlFormProps) {
     setSubmitting(true);
 
     try {
-      const res = await fetch("/api/videos", {
+      const res = await fetch("/api/content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
