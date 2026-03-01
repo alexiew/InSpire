@@ -31,6 +31,12 @@ export async function POST(request: NextRequest) {
 
   const item = createContent(url, videoId, "youtube");
 
+  // Pre-assign topics if provided (e.g., when submitting from a topic page)
+  if (Array.isArray(body.topics) && body.topics.length > 0) {
+    const { updateContent } = await import("@/lib/content");
+    updateContent(item.id, { topics: body.topics });
+  }
+
   // Fire-and-forget processing
   processContent(item.id).catch(() => {});
 

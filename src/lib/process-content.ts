@@ -25,11 +25,13 @@ export async function processContent(id: string): Promise<void> {
     const transcript = await fetchTranscript(item.sourceId);
     updateContent(id, { transcript });
 
-    // Extract structured knowledge
+    // Extract structured knowledge, merging with any pre-assigned topics
+    const current = getContent(id);
     const result = await extract(metadata.title, transcript);
+    const mergedTopics = [...new Set([...(current?.topics || []), ...result.topics])];
     updateContent(id, {
       summary: result.summary,
-      topics: result.topics,
+      topics: mergedTopics,
       claims: result.claims,
       people: result.people,
       status: "ready",

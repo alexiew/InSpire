@@ -111,6 +111,45 @@ describe("getTopic", () => {
   });
 });
 
+describe("createTopic", () => {
+  it("creates a standalone topic with no content", async () => {
+    const { createTopic, getTopic } = await loadModules();
+
+    const topic = createTopic("open claude");
+    expect(topic.slug).toBe("open-claude");
+    expect(topic.name).toBe("open claude");
+    expect(topic.contentIds).toEqual([]);
+
+    const retrieved = getTopic("open-claude");
+    expect(retrieved).toBeDefined();
+    expect(retrieved!.name).toBe("open claude");
+  });
+
+  it("returns existing topic if slug already exists", async () => {
+    const { createContent, updateContent, rebuildTopicIndex, createTopic } =
+      await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { topics: ["longevity"], status: "ready" });
+    rebuildTopicIndex();
+
+    const topic = createTopic("longevity");
+    expect(topic.contentIds).toHaveLength(1);
+  });
+
+  it("survives a topic index rebuild with no content", async () => {
+    const { createTopic, rebuildTopicIndex, getTopic } = await loadModules();
+
+    createTopic("open claude");
+    rebuildTopicIndex();
+
+    const topic = getTopic("open-claude");
+    expect(topic).toBeDefined();
+    expect(topic!.name).toBe("open claude");
+    expect(topic!.contentIds).toEqual([]);
+  });
+});
+
 describe("updateTopicSynthesis", () => {
   it("stores synthesis on a topic", async () => {
     const {

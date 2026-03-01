@@ -79,11 +79,7 @@ export function TopicEditor({ contentId, topics, onUpdated }: TopicEditorProps) 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (suggestions.length > 0) {
-        addTopic(suggestions[0]);
-      } else {
-        addTopic(input);
-      }
+      addTopic(input);
     }
     if (e.key === "Escape") {
       setShowSuggestions(false);
@@ -149,7 +145,7 @@ export function TopicEditor({ contentId, topics, onUpdated }: TopicEditorProps) 
           onKeyDown={handleKeyDown}
           className="h-8 text-sm"
         />
-        {showSuggestions && suggestions.length > 0 && (
+        {showSuggestions && input.trim() && (
           <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md">
             {suggestions.map((name) => (
               <button
@@ -163,6 +159,9 @@ export function TopicEditor({ contentId, topics, onUpdated }: TopicEditorProps) 
                 {name}
               </button>
             ))}
+            <div className="px-3 py-1.5 text-xs text-muted-foreground border-t">
+              Press Enter to {suggestions.length > 0 ? "create" : "add"} &ldquo;{input.trim()}&rdquo;
+            </div>
           </div>
         )}
       </div>

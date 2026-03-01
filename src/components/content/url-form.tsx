@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input";
 
 interface UrlFormProps {
   onSubmitted: () => void;
+  initialTopics?: string[];
 }
 
-export function UrlForm({ onSubmitted }: UrlFormProps) {
+export function UrlForm({ onSubmitted, initialTopics }: UrlFormProps) {
   const [url, setUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -25,7 +26,7 @@ export function UrlForm({ onSubmitted }: UrlFormProps) {
       const res = await fetch("/api/content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, ...(initialTopics?.length ? { topics: initialTopics } : {}) }),
       });
 
       if (!res.ok) {

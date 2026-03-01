@@ -4,7 +4,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Search, Plus } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { UrlForm } from "@/components/content/url-form";
 import { Input } from "@/components/ui/input";
@@ -14,16 +15,37 @@ import { TopicCard } from "@/components/topics/topic-card";
 import { useContent } from "@/hooks/use-content";
 import { useTopics } from "@/hooks/use-topics";
 import { filterAndSortTopics, type TopicSortOrder } from "@/lib/filter-topics";
+import { slugify } from "@/lib/utils";
 
 export default function HomePage() {
   const { data: items, mutate: mutateContent } = useContent();
   const { data: topics, mutate: mutateTopics } = useTopics();
   const [topicSearch, setTopicSearch] = useState("");
   const [topicSort, setTopicSort] = useState<TopicSortOrder>("count");
+  const [newTopicName, setNewTopicName] = useState("");
+  const [creatingTopic, setCreatingTopic] = useState(false);
+  const router = useRouter();
 
   function handleSubmitted() {
     mutateContent();
     mutateTopics();
+  }
+
+  async function handleCreateTopic(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newTopicName.trim()) return;
+    const res = await fetch("/api/topics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newTopicName.trim() }),
+    });
+    if (res.ok) {
+      const topic = await res.json();
+      setNewTopicName("");
+      setCreatingTopic(false);
+      mutateTopics();
+      router.push(`/topics/${topic.slug}`);
+    }
   }
 
   const hasTopics = topics && topics.length > 0;
@@ -45,11 +67,36 @@ export default function HomePage() {
           </p>
         )}
 
-        {hasTopics && (
+        {(hasTopics || hasItems) && (
           <section>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold">Topics</h2>
               <div className="flex items-center gap-2">
+                {creatingTopic ? (
+                  <form onSubmit={handleCreateTopic} className="flex items-center gap-1">
+                    <Input
+                      autoFocus
+                      placeholder="Topic name..."
+                      value={newTopicName}
+                      onChange={(e) => setNewTopicName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Escape" && setCreatingTopic(false)}
+                      className="h-8 w-48 text-sm"
+                    />
+                    <Button type="submit" size="sm" className="h-8" disabled={!newTopicName.trim()}>
+                      Create
+                    </Button>
+                  </form>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => setCreatingTopic(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    New Topic
+                  </Button>
+                )}
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
                   <Input

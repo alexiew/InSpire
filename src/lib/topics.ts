@@ -43,19 +43,26 @@ function writeData(data: TopicsData): void {
 
 export { slugify } from "./utils";
 
+export function createTopic(name: string): Topic {
+  const slug = slugify(name);
+  const data = readData();
+  const existing = data.topics.find((t) => t.slug === slug);
+  if (existing) return existing;
+
+  const topic: Topic = { slug, name, contentIds: [] };
+  data.topics.push(topic);
+  writeData(data);
+  return topic;
+}
+
 export function rebuildTopicIndex(): void {
   const items = listContent();
   const oldData = readData();
 
-  // Build a map of existing synthesis data keyed by slug
-  const existingSynthesis = new Map<string, { synthesis?: string; synthesizedAt?: string }>();
+  // Preserve existing topic metadata (synthesis, manually-created empty topics)
+  const existingTopics = new Map<string, Topic>();
   for (const topic of oldData.topics) {
-    if (topic.synthesis) {
-      existingSynthesis.set(topic.slug, {
-        synthesis: topic.synthesis,
-        synthesizedAt: topic.synthesizedAt,
-      });
-    }
+    existingTopics.set(topic.slug, topic);
   }
 
   // Build topic map from content items
@@ -73,10 +80,10 @@ export function rebuildTopicIndex(): void {
     }
   }
 
-  // Build topic list, preserving existing synthesis
+  // Merge: start with content-derived topics, then add existing topics not in the map
   const topics: Topic[] = [];
   for (const [slug, { name, contentIds }] of topicMap) {
-    const existing = existingSynthesis.get(slug);
+    const existing = existingTopics.get(slug);
     topics.push({
       slug,
       name,
@@ -84,6 +91,13 @@ export function rebuildTopicIndex(): void {
       synthesis: existing?.synthesis,
       synthesizedAt: existing?.synthesizedAt,
     });
+  }
+
+  // Preserve manually-created topics that have no content yet
+  for (const [slug, topic] of existingTopics) {
+    if (!topicMap.has(slug)) {
+      topics.push({ ...topic, contentIds: [] });
+    }
   }
 
   writeData({ topics });

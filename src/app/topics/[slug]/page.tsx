@@ -7,6 +7,7 @@ import { use } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { UrlForm } from "@/components/content/url-form";
 import { ContentCard } from "@/components/content/content-card";
 import { SynthesisSection } from "@/components/topics/synthesis-section";
 import { useTopic } from "@/hooks/use-topics";
@@ -42,6 +43,11 @@ export default function TopicDetailPage({
           {topic.contentIds.length === 1 ? "item" : "items"}
         </span>
       </div>
+
+      <UrlForm
+        onSubmitted={() => mutate()}
+        initialTopics={[topic.name]}
+      />
 
       <SynthesisSection
         slug={slug}
