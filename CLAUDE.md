@@ -40,7 +40,8 @@ npm run dev
 
 - `GET/POST /api/content` — list and submit content
 - `GET/PATCH/DELETE /api/content/[id]` — single content item; PATCH accepts `{ topics, status }`
-- `GET /api/recent` — newest 9 non-discarded items
+- `GET /api/recent` — items pending review (processing, ready, error)
+- `GET /api/library?q=search` — accepted content, optional title search
 - `GET /api/topics` — all topics
 - `GET /api/topics/[slug]` — topic with content items
 - `POST /api/topics/[slug]/synthesize` — generate cross-content synthesis
