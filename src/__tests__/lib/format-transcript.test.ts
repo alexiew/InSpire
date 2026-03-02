@@ -2,7 +2,7 @@
 // ABOUTME: Verifies joining short lines, preserving speaker labels, and stripping headers.
 
 import { describe, it, expect } from "vitest";
-import { formatTranscript } from "@/lib/format-transcript";
+import { formatTranscript, transcriptStats } from "@/lib/format-transcript";
 
 describe("formatTranscript", () => {
   it("joins short caption lines into flowing text", () => {
@@ -75,5 +75,33 @@ spaces   in it`;
 
     const result = formatTranscript(raw);
     expect(result).toBe("this has extra spaces in it");
+  });
+});
+
+describe("transcriptStats", () => {
+  it("counts words and estimates duration", () => {
+    const text = Array(1500).fill("word").join(" ");
+    const stats = transcriptStats(text);
+    expect(stats.wordCount).toBe(1500);
+    expect(stats.duration).toBe("10 min");
+  });
+
+  it("formats duration in hours and minutes", () => {
+    const text = Array(15000).fill("word").join(" ");
+    const stats = transcriptStats(text);
+    expect(stats.wordCount).toBe(15000);
+    expect(stats.duration).toBe("1h 40min");
+  });
+
+  it("returns zero stats for empty text", () => {
+    const stats = transcriptStats("");
+    expect(stats.wordCount).toBe(0);
+    expect(stats.duration).toBe("0 min");
+  });
+
+  it("handles short transcripts", () => {
+    const stats = transcriptStats("hello world");
+    expect(stats.wordCount).toBe(2);
+    expect(stats.duration).toBe("0 min");
   });
 });

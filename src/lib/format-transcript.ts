@@ -31,3 +31,15 @@ export function formatTranscript(raw: string): string {
 
   return paragraphs.join("\n\n");
 }
+
+const WORDS_PER_MINUTE = 150;
+
+export function transcriptStats(text: string): { wordCount: number; duration: string } {
+  const trimmed = text.trim();
+  const wordCount = trimmed ? trimmed.split(/\s+/).length : 0;
+  const totalMinutes = Math.round(wordCount / WORDS_PER_MINUTE);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const duration = hours > 0 ? `${hours}h ${minutes}min` : `${minutes} min`;
+  return { wordCount, duration };
+}

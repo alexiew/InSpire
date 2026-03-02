@@ -12,7 +12,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { formatTranscript } from "@/lib/format-transcript";
+import { formatTranscript, transcriptStats } from "@/lib/format-transcript";
 
 interface TranscriptSectionProps {
   transcript: string;
@@ -21,6 +21,7 @@ interface TranscriptSectionProps {
 export function TranscriptSection({ transcript }: TranscriptSectionProps) {
   const [search, setSearch] = useState("");
   const formatted = useMemo(() => formatTranscript(transcript), [transcript]);
+  const stats = useMemo(() => transcriptStats(formatted), [formatted]);
 
   const matchCount = useMemo(() => {
     if (!search.trim()) return 0;
@@ -51,7 +52,12 @@ export function TranscriptSection({ transcript }: TranscriptSectionProps) {
     <Collapsible>
       <CollapsibleTrigger asChild>
         <Button variant="outline" className="w-full justify-between">
-          Full Transcript
+          <span>
+            Full Transcript
+            <span className="ml-2 text-muted-foreground font-normal">
+              {stats.wordCount.toLocaleString()} words · ~{stats.duration}
+            </span>
+          </span>
           <ChevronsUpDown className="h-4 w-4" />
         </Button>
       </CollapsibleTrigger>
