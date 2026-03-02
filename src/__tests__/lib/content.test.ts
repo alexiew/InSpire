@@ -119,7 +119,7 @@ describe("deleteContent", () => {
 });
 
 describe("listRecent", () => {
-  it("returns newest items excluding discarded", async () => {
+  it("returns items pending review, excluding accepted and discarded", async () => {
     const { createContent, updateContent, listRecent } = await loadModule();
 
     const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
@@ -129,33 +129,36 @@ describe("listRecent", () => {
     const c3 = createContent("https://youtube.com/watch?v=c", "c", "youtube");
 
     updateContent(c2.id, { status: "discarded" });
+    updateContent(c1.id, { status: "accepted" });
 
+    // Only c3 remains (still processing)
     const recent = listRecent();
-    expect(recent).toHaveLength(2);
+    expect(recent).toHaveLength(1);
     expect(recent[0].id).toBe(c3.id);
-    expect(recent[1].id).toBe(c1.id);
   });
 
-  it("respects the limit parameter", async () => {
+  it("shows all pending items without a limit", async () => {
     const { createContent, listRecent } = await loadModule();
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 20; i++) {
       createContent(`https://youtube.com/watch?v=${i}`, `${i}`, "youtube");
     }
 
-    expect(listRecent(3)).toHaveLength(3);
+    expect(listRecent()).toHaveLength(20);
   });
 
-  it("includes both ready and accepted items", async () => {
+  it("includes processing, ready, and error statuses", async () => {
     const { createContent, updateContent, listRecent } = await loadModule();
 
     const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
-    updateContent(c1.id, { status: "accepted" });
+    // c1 stays as "processing"
 
     const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
     updateContent(c2.id, { status: "ready" });
 
-    const recent = listRecent();
-    expect(recent).toHaveLength(2);
+    const c3 = createContent("https://youtube.com/watch?v=c", "c", "youtube");
+    updateContent(c3.id, { status: "error", error: "failed" });
+
+    expect(listRecent()).toHaveLength(3);
   });
 });

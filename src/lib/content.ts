@@ -116,11 +116,11 @@ export function listContent(): ContentItem[] {
   return rows.map(rowToContentItem);
 }
 
-export function listRecent(limit = 9): ContentItem[] {
+export function listRecent(): ContentItem[] {
   const db = getDb();
   const rows = db
-    .prepare("SELECT * FROM content WHERE status != 'discarded' ORDER BY created_at DESC LIMIT ?")
-    .all(limit) as ContentRow[];
+    .prepare("SELECT * FROM content WHERE status IN ('processing', 'ready', 'error') ORDER BY created_at DESC")
+    .all() as ContentRow[];
   return rows.map(rowToContentItem);
 }
 
