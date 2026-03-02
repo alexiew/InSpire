@@ -2,19 +2,20 @@
 // ABOUTME: Uses a temp directory for test isolation.
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, mkdirSync } from "fs";
+import { mkdtempSync, rmSync } from "fs";
 import path from "path";
 import os from "os";
+import { closeDb } from "@/lib/db";
 
 let tmpDir: string;
 
 beforeEach(() => {
   tmpDir = mkdtempSync(path.join(os.tmpdir(), "inspire-test-"));
-  mkdirSync(path.join(tmpDir, "data"), { recursive: true });
   process.env.INSPIRE_DATA_DIR = tmpDir;
 });
 
 afterEach(() => {
+  closeDb();
   rmSync(tmpDir, { recursive: true, force: true });
   delete process.env.INSPIRE_DATA_DIR;
 });
