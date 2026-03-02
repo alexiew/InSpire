@@ -115,8 +115,12 @@ function initSchema(db: Database.Database): void {
     db.exec("ALTER TABLE people ADD COLUMN slug TEXT NOT NULL DEFAULT ''");
   }
 
-  // Migrate status: 'ready' → 'accepted' for existing reviewed content
-  db.exec("UPDATE content SET status = 'accepted' WHERE status = 'ready'");
+  // One-time migration: 'ready' → 'accepted' for pre-lifecycle content.
+  // Only runs when no content has 'accepted' status yet (i.e., migration hasn't been applied).
+  const hasAccepted = db.prepare("SELECT 1 FROM content WHERE status = 'accepted' LIMIT 1").get();
+  if (!hasAccepted) {
+    db.exec("UPDATE content SET status = 'accepted' WHERE status = 'ready'");
+  }
 
   if (!ftsExists) {
     db.exec(`
