@@ -5,7 +5,7 @@ import { getContent, updateContent } from "./content";
 import { fetchMetadata, fetchTranscript } from "./youtube";
 import { fetchPodcastTranscript } from "./podcast";
 import { extract } from "./extract";
-import { rebuildTopicIndex } from "./topics";
+import { listTopics, rebuildTopicIndex } from "./topics";
 
 export async function processContent(id: string): Promise<void> {
   try {
@@ -32,7 +32,8 @@ export async function processContent(id: string): Promise<void> {
 
     // Extract structured knowledge, merging with any pre-assigned topics
     const current = getContent(id);
-    const result = await extract(current!.title, transcript);
+    const existingTopicNames = listTopics().map((t) => t.name);
+    const result = await extract(current!.title, transcript, existingTopicNames);
     const mergedTopics = [...new Set([...(current?.topics || []), ...result.topics])];
     updateContent(id, {
       summary: result.summary,

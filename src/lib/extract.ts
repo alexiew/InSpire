@@ -10,7 +10,17 @@ export interface ExtractionResult {
   people: string[];
 }
 
-const EXTRACTION_PROMPT = `Analyze this transcript titled "{title}".
+export function buildExtractionPrompt(
+  title: string,
+  transcript: string,
+  existingTopics?: string[]
+): string {
+  const topicsSection =
+    existingTopics && existingTopics.length > 0
+      ? `\nThe knowledge base already contains these topics:\n${existingTopics.join(", ")}\n\nWhen assigning topics, REUSE existing topics from this list wherever they fit.\nOnly create a new topic if the content genuinely doesn't match any existing topic.\n`
+      : "";
+
+  return `Analyze this transcript titled "${title}".
 
 Produce TWO things:
 
@@ -26,14 +36,15 @@ Produce TWO things:
 \`\`\`
 
 Guidelines for the metadata:
-- **topics**: 3-5 topic tags. Use meaningful categories like "longevity", "vitamin D", "neuroplasticity", "intermittent fasting" — specific enough to search and organize by, broad enough that multiple sources could share them. Avoid overly broad tags like "health" or "science".
+- **topics**: 3-5 topic tags. Use meaningful categories like "longevity", "vitamin D", "neuroplasticity", "intermittent fasting" — specific enough to search and organize by, broad enough that multiple sources could share them. Avoid overly broad tags like "health" or "science". Reuse existing topics where they fit. Only create a new topic if nothing matches.
 - **claims**: 3-7 core claims made in the content, each as a single clear sentence.
 - **people**: Key people mentioned, interviewed, or presenting.
-
+${topicsSection}
 The JSON block MUST be the last thing in your output.
 
 Transcript:
-{transcript}`;
+${transcript}`;
+}
 
 export function parseExtraction(raw: string): ExtractionResult {
   // Find the last fenced code block (``` or ```json)
@@ -77,12 +88,10 @@ export function parseExtraction(raw: string): ExtractionResult {
 
 export async function extract(
   title: string,
-  transcript: string
+  transcript: string,
+  existingTopics?: string[]
 ): Promise<ExtractionResult> {
-  const prompt = EXTRACTION_PROMPT
-    .replace("{title}", title)
-    .replace("{transcript}", transcript);
-
+  const prompt = buildExtractionPrompt(title, transcript, existingTopics);
   const raw = await callClaude(prompt);
   return parseExtraction(raw);
 }

@@ -1,8 +1,8 @@
-// ABOUTME: Tests for structured extraction output parsing.
+// ABOUTME: Tests for structured extraction output parsing and prompt construction.
 // ABOUTME: Verifies that markdown + JSON output is correctly split and parsed.
 
 import { describe, it, expect } from "vitest";
-import { parseExtraction } from "@/lib/extract";
+import { parseExtraction, buildExtractionPrompt } from "@/lib/extract";
 
 describe("parseExtraction", () => {
   it("parses markdown summary with trailing JSON block", () => {
@@ -98,5 +98,27 @@ More summary text.
 
     const result = parseExtraction(raw);
     expect(result.summary).toBe("Summary with extra whitespace.");
+  });
+});
+
+describe("buildExtractionPrompt", () => {
+  it("builds a prompt without existing topics section when none provided", () => {
+    const prompt = buildExtractionPrompt("Test Title", "Some transcript text");
+    expect(prompt).toContain("Test Title");
+    expect(prompt).toContain("Some transcript text");
+    expect(prompt).not.toContain("knowledge base already contains");
+  });
+
+  it("builds a prompt without existing topics section when empty array provided", () => {
+    const prompt = buildExtractionPrompt("Test Title", "Some transcript text", []);
+    expect(prompt).not.toContain("knowledge base already contains");
+  });
+
+  it("includes existing topics in the prompt when provided", () => {
+    const topics = ["longevity", "neuroplasticity", "intermittent fasting"];
+    const prompt = buildExtractionPrompt("Test Title", "Some transcript text", topics);
+    expect(prompt).toContain("knowledge base already contains these topics");
+    expect(prompt).toContain("longevity, neuroplasticity, intermittent fasting");
+    expect(prompt).toContain("REUSE existing topics");
   });
 });
