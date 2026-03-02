@@ -1,8 +1,8 @@
-// ABOUTME: Tests for YouTube URL parsing and metadata/transcript extraction.
-// ABOUTME: URL parsing tests are pure; metadata/transcript tests mock external calls.
+// ABOUTME: Tests for YouTube URL parsing and channel feed parsing.
+// ABOUTME: All tests use pure functions with known input strings.
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { extractVideoId } from "@/lib/youtube";
+import { describe, it, expect } from "vitest";
+import { extractVideoId, parseChannelId, parseChannelFeed } from "@/lib/youtube";
 
 describe("extractVideoId", () => {
   it("extracts from youtube.com/watch?v=ID", () => {
@@ -60,5 +60,56 @@ describe("extractVideoId", () => {
     expect(extractVideoId("https://youtu.be/dQw4w9WgXcQ?t=30")).toBe(
       "dQw4w9WgXcQ"
     );
+  });
+});
+
+describe("parseChannelId", () => {
+  it("extracts channel ID from page HTML", () => {
+    const html = `<link rel="canonical" href="https://www.youtube.com/channel/UCwL1s6JkE1PaqBhK2HEcfTQ">`;
+    expect(parseChannelId(html)).toBe("UCwL1s6JkE1PaqBhK2HEcfTQ");
+  });
+
+  it("extracts channel ID from JSON-LD data", () => {
+    const html = `"channelId":"UC2D2CMWXMOVWx7giW1n3LIg"`;
+    expect(parseChannelId(html)).toBe("UC2D2CMWXMOVWx7giW1n3LIg");
+  });
+
+  it("extracts channel ID from /channel/ URL", () => {
+    expect(parseChannelId("https://www.youtube.com/channel/UCXuqSBlHAE6Xw-yeJA0Tunw")).toBe("UCXuqSBlHAE6Xw-yeJA0Tunw");
+  });
+
+  it("returns null for HTML without channel ID", () => {
+    expect(parseChannelId("<html><body>No channel here</body></html>")).toBeNull();
+  });
+});
+
+describe("parseChannelFeed", () => {
+  const sampleFeed = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns:yt="http://www.youtube.com/xml/schemas/2015"
+      xmlns:media="http://search.yahoo.com/mrss/"
+      xmlns="http://www.w3.org/2005/Atom">
+  <title>Huberman Lab</title>
+  <entry>
+    <yt:videoId>abc123def45</yt:videoId>
+    <title>Episode 1</title>
+    <published>2025-01-15T00:00:00+00:00</published>
+  </entry>
+  <entry>
+    <yt:videoId>xyz789ghi01</yt:videoId>
+    <title>Episode 2</title>
+    <published>2025-01-08T00:00:00+00:00</published>
+  </entry>
+</feed>`;
+
+  it("parses video IDs and titles from RSS feed", () => {
+    const videos = parseChannelFeed(sampleFeed);
+    expect(videos).toHaveLength(2);
+    expect(videos[0]).toEqual({ videoId: "abc123def45", title: "Episode 1" });
+    expect(videos[1]).toEqual({ videoId: "xyz789ghi01", title: "Episode 2" });
+  });
+
+  it("returns empty array for empty feed", () => {
+    const emptyFeed = `<?xml version="1.0"?><feed></feed>`;
+    expect(parseChannelFeed(emptyFeed)).toEqual([]);
   });
 });

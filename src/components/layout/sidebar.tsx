@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Clock, Hash, Users, FolderOpen } from "lucide-react";
+import { Clock, Hash, Users, FolderOpen, Rss } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -13,6 +13,7 @@ const navItems = [
   { href: "/", label: "Topics", icon: Hash },
   { href: "/people", label: "People", icon: Users },
   { href: "/categories", label: "Categories", icon: FolderOpen },
+  { href: "/subscriptions", label: "Subscriptions", icon: Rss },
 ];
 
 export function Sidebar() {

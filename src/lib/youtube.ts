@@ -45,6 +45,77 @@ export async function fetchMetadata(videoId: string): Promise<VideoMetadata> {
   };
 }
 
+export function parseChannelId(text: string): string | null {
+  // Match /channel/UC... in URLs or canonical links
+  const channelUrlMatch = text.match(/youtube\.com\/channel\/(UC[\w-]{22})/);
+  if (channelUrlMatch) return channelUrlMatch[1];
+
+  // Match "channelId":"UC..." in JSON data embedded in page
+  const jsonMatch = text.match(/"channelId":"(UC[\w-]{22})"/);
+  if (jsonMatch) return jsonMatch[1];
+
+  return null;
+}
+
+export interface ChannelVideo {
+  videoId: string;
+  title: string;
+}
+
+export function parseChannelFeed(xml: string): ChannelVideo[] {
+  const videos: ChannelVideo[] = [];
+  const entryRegex = /<entry>[\s\S]*?<\/entry>/g;
+  let match;
+
+  while ((match = entryRegex.exec(xml)) !== null) {
+    const entry = match[0];
+    const videoIdMatch = entry.match(/<yt:videoId>([\w-]+)<\/yt:videoId>/);
+    const titleMatch = entry.match(/<title>([\s\S]*?)<\/title>/);
+
+    if (videoIdMatch && titleMatch) {
+      videos.push({
+        videoId: videoIdMatch[1],
+        title: titleMatch[1].trim(),
+      });
+    }
+  }
+
+  return videos;
+}
+
+export async function resolveChannelId(url: string): Promise<{ channelId: string; name: string }> {
+  // Direct /channel/ URL — extract ID directly
+  const directMatch = url.match(/youtube\.com\/channel\/(UC[\w-]{22})/);
+  if (directMatch) {
+    // Fetch page to get the channel name
+    const res = await fetch(url);
+    const html = await res.text();
+    const nameMatch = html.match(/<title>([\s\S]*?)(?:\s*-\s*YouTube)?<\/title>/);
+    return { channelId: directMatch[1], name: nameMatch?.[1]?.trim() || directMatch[1] };
+  }
+
+  // For @handle, /c/name, etc. — fetch the page and parse
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch channel page: ${res.status}`);
+  const html = await res.text();
+
+  const channelId = parseChannelId(html);
+  if (!channelId) throw new Error("Could not find channel ID in page");
+
+  const nameMatch = html.match(/<title>([\s\S]*?)(?:\s*-\s*YouTube)?<\/title>/);
+  const name = nameMatch?.[1]?.trim() || channelId;
+
+  return { channelId, name };
+}
+
+export async function fetchChannelVideos(channelId: string): Promise<ChannelVideo[]> {
+  const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+  const res = await fetch(feedUrl);
+  if (!res.ok) throw new Error(`Failed to fetch channel feed: ${res.status}`);
+  const xml = await res.text();
+  return parseChannelFeed(xml);
+}
+
 export function fetchTranscript(videoId: string): Promise<string> {
   const url = `https://www.youtube.com/watch?v=${videoId}`;
   return new Promise((resolve, reject) => {
