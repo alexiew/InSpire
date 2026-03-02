@@ -30,7 +30,7 @@ export function ContentCard({ item }: ContentCardProps) {
         )}
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-base leading-tight">
+            <CardTitle className="text-base leading-tight line-clamp-2">
               {item.title || "Processing..."}
             </CardTitle>
             <StatusBadge status={item.status} />
