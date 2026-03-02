@@ -14,9 +14,10 @@ import type { ContentItem } from "@/lib/content";
 
 interface ContentCardProps {
   item: ContentItem;
+  showStatus?: boolean;
 }
 
-export function ContentCard({ item }: ContentCardProps) {
+export function ContentCard({ item, showStatus = true }: ContentCardProps) {
   return (
     <Card className="hover:border-primary/30 transition-colors h-full flex flex-col">
       <Link href={`/content/${item.id}`} className="flex-1">
@@ -32,7 +33,7 @@ export function ContentCard({ item }: ContentCardProps) {
             <CardTitle className="text-base leading-tight line-clamp-2">
               {item.title || "Processing..."}
             </CardTitle>
-            <StatusBadge status={item.status} />
+            {showStatus && <StatusBadge status={item.status} />}
           </div>
           {item.author && (
             <CardDescription>{item.author}</CardDescription>

@@ -1,4 +1,4 @@
-// ABOUTME: Recent content page showing newest items.
+// ABOUTME: Review queue showing content pending approval.
 // ABOUTME: Click through to detail page to review, accept, or discard.
 
 "use client";
@@ -22,7 +22,7 @@ export default function RecentPage() {
         </div>
       ) : items ? (
         <p className="text-center text-muted-foreground py-12">
-          No content yet. Paste a YouTube URL above to get started.
+          Nothing to review. New content from subscriptions will appear here.
         </p>
       ) : null}
     </div>

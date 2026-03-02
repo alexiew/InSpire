@@ -162,3 +162,37 @@ describe("listRecent", () => {
     expect(listRecent()).toHaveLength(3);
   });
 });
+
+describe("listLibrary", () => {
+  it("returns only accepted items", async () => {
+    const { createContent, updateContent, listLibrary } = await loadModule();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { status: "accepted", title: "Accepted Video" });
+
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    updateContent(c2.id, { status: "ready", title: "Ready Video" });
+
+    const c3 = createContent("https://youtube.com/watch?v=c", "c", "youtube");
+    updateContent(c3.id, { status: "discarded" });
+
+    const library = listLibrary();
+    expect(library).toHaveLength(1);
+    expect(library[0].title).toBe("Accepted Video");
+  });
+
+  it("filters by search term in title", async () => {
+    const { createContent, updateContent, listLibrary } = await loadModule();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { status: "accepted", title: "Dopamine and Focus" });
+
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    updateContent(c2.id, { status: "accepted", title: "Sleep Optimization" });
+
+    expect(listLibrary("dopamine")).toHaveLength(1);
+    expect(listLibrary("dopamine")[0].title).toBe("Dopamine and Focus");
+    expect(listLibrary("OPTIMIZATION")).toHaveLength(1);
+    expect(listLibrary()).toHaveLength(2);
+  });
+});

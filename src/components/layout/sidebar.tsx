@@ -5,12 +5,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Clock, Hash, Users, FolderOpen, Rss } from "lucide-react";
+import { Inbox, BookOpen, Hash, Users, FolderOpen, Rss } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
+import { useRecent } from "@/hooks/use-recent";
 
 const navItems = [
-  { href: "/recent", label: "Recent", icon: Clock },
+  { href: "/recent", label: "Review", icon: Inbox },
+  { href: "/library", label: "Library", icon: BookOpen },
   { href: "/", label: "Topics", icon: Hash },
   { href: "/people", label: "People", icon: Users },
   { href: "/categories", label: "Categories", icon: FolderOpen },
@@ -19,6 +21,8 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: reviewItems } = useRecent();
+  const reviewCount = reviewItems?.length ?? 0;
 
   function isActive(href: string) {
     if (href === "/") {
@@ -48,6 +52,11 @@ export function Sidebar() {
           >
             <Icon className="h-4 w-4" />
             {label}
+            {href === "/recent" && reviewCount > 0 && (
+              <span className="ml-auto rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+                {reviewCount}
+              </span>
+            )}
           </Link>
         ))}
       </nav>

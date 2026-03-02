@@ -124,6 +124,20 @@ export function listRecent(): ContentItem[] {
   return rows.map(rowToContentItem);
 }
 
+export function listLibrary(search?: string): ContentItem[] {
+  const db = getDb();
+  if (search) {
+    const rows = db
+      .prepare("SELECT * FROM content WHERE status = 'accepted' AND title LIKE ? ORDER BY created_at DESC")
+      .all(`%${search}%`) as ContentRow[];
+    return rows.map(rowToContentItem);
+  }
+  const rows = db
+    .prepare("SELECT * FROM content WHERE status = 'accepted' ORDER BY created_at DESC")
+    .all() as ContentRow[];
+  return rows.map(rowToContentItem);
+}
+
 export function getContent(id: string): ContentItem | undefined {
   const db = getDb();
   const row = db.prepare("SELECT * FROM content WHERE id = ?").get(id) as ContentRow | undefined;
