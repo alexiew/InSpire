@@ -4,8 +4,9 @@
 "use client";
 
 import { use } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UrlForm } from "@/components/content/url-form";
 import { ContentCard } from "@/components/content/content-card";
@@ -20,6 +21,13 @@ export default function TopicDetailPage({
 }) {
   const { slug } = use(params);
   const { data: topic, mutate } = useTopic(slug);
+  const router = useRouter();
+
+  async function handleDelete() {
+    if (!confirm(`Delete topic "${topic?.name}"?`)) return;
+    await fetch(`/api/topics/${slug}`, { method: "DELETE" });
+    router.push("/");
+  }
 
   if (!topic) {
     return (
@@ -31,23 +39,29 @@ export default function TopicDetailPage({
 
   return (
     <div className="mx-auto max-w-4xl p-6 space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Back
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-bold">{topic.name}</h1>
-        <span className="text-muted-foreground">
-          {topic.contentIds.length}{" "}
-          {topic.contentIds.length === 1 ? "item" : "items"}
-        </span>
-        <CrosslinkDialog
-          slug={slug}
-          topicName={topic.name}
-          onLinked={() => mutate()}
-        />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="mr-1 h-4 w-4" />
+              Back
+            </Button>
+          </Link>
+          <h1 className="text-2xl font-bold">{topic.name}</h1>
+          <span className="text-muted-foreground">
+            {topic.contentIds.length}{" "}
+            {topic.contentIds.length === 1 ? "item" : "items"}
+          </span>
+          <CrosslinkDialog
+            slug={slug}
+            topicName={topic.name}
+            onLinked={() => mutate()}
+          />
+        </div>
+        <Button variant="destructive" size="sm" onClick={handleDelete}>
+          <Trash2 className="mr-1 h-4 w-4" />
+          Delete
+        </Button>
       </div>
 
       <UrlForm
