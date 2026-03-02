@@ -90,6 +90,12 @@ export function updateTopicSynthesis(
   return getTopic(slug)!;
 }
 
+export function deleteTopic(slug: string): boolean {
+  const db = getDb();
+  const result = db.prepare("DELETE FROM topics WHERE slug = ?").run(slug);
+  return result.changes > 0;
+}
+
 export function mergeTopics(sourceSlugs: string[], targetName: string): Topic {
   if (sourceSlugs.length < 2) {
     throw new Error("At least 2 topics are required to merge");

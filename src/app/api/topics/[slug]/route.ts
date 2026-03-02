@@ -2,7 +2,7 @@
 // ABOUTME: Returns topic details including content IDs and cached synthesis.
 
 import { NextRequest, NextResponse } from "next/server";
-import { getTopic } from "@/lib/topics";
+import { getTopic, deleteTopic } from "@/lib/topics";
 import { getContent } from "@/lib/content";
 
 export async function GET(
@@ -21,4 +21,16 @@ export async function GET(
     .filter(Boolean);
 
   return NextResponse.json({ ...topic, items });
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params;
+  const deleted = deleteTopic(slug);
+  if (!deleted) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  return NextResponse.json({ deleted: true });
 }

@@ -210,6 +210,26 @@ describe("mergeTopics", () => {
   });
 });
 
+describe("deleteTopic", () => {
+  it("removes a topic and its content associations", async () => {
+    const { createContent, updateContent, deleteTopic, getTopic } =
+      await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { topics: ["disposable"], status: "accepted" });
+
+    expect(getTopic("disposable")).toBeDefined();
+    const deleted = deleteTopic("disposable");
+    expect(deleted).toBe(true);
+    expect(getTopic("disposable")).toBeUndefined();
+  });
+
+  it("returns false for nonexistent slug", async () => {
+    const { deleteTopic } = await loadModules();
+    expect(deleteTopic("nonexistent")).toBe(false);
+  });
+});
+
 describe("updateTopicSynthesis", () => {
   it("stores synthesis on a topic", async () => {
     const {
