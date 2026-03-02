@@ -1,10 +1,10 @@
-// ABOUTME: Manages the topic index derived from content items.
-// ABOUTME: Rebuilds topics from content, provides CRUD for topic data.
+// ABOUTME: Manages topics derived from content items using SQLite.
+// ABOUTME: Provides CRUD for topics; join table maintains the topic index at write time.
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
-import path from "path";
-import { listContent } from "./content";
+import { getDb } from "./db";
 import { slugify } from "./utils";
+
+export { slugify } from "./utils";
 
 export interface Topic {
   slug: string;
@@ -14,115 +14,95 @@ export interface Topic {
   synthesizedAt?: string;
 }
 
-interface TopicsData {
-  topics: Topic[];
-}
-
-function getDataPath(): string {
-  const base = process.env.INSPIRE_DATA_DIR || process.cwd();
-  return path.join(base, "data", "topics.json");
-}
-
-function readData(): TopicsData {
-  const dataPath = getDataPath();
-  if (!existsSync(dataPath)) {
-    return { topics: [] };
-  }
-  const raw = readFileSync(dataPath, "utf-8");
-  return JSON.parse(raw);
-}
-
-function writeData(data: TopicsData): void {
-  const dataPath = getDataPath();
-  const dir = path.dirname(dataPath);
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-  writeFileSync(dataPath, JSON.stringify(data, null, 2) + "\n", "utf-8");
-}
-
-export { slugify } from "./utils";
-
-export function createTopic(name: string): Topic {
-  const slug = slugify(name);
-  const data = readData();
-  const existing = data.topics.find((t) => t.slug === slug);
-  if (existing) return existing;
-
-  const topic: Topic = { slug, name, contentIds: [] };
-  data.topics.push(topic);
-  writeData(data);
-  return topic;
-}
-
-export function rebuildTopicIndex(): void {
-  const items = listContent();
-  const oldData = readData();
-
-  // Preserve existing topic metadata (synthesis, manually-created empty topics)
-  const existingTopics = new Map<string, Topic>();
-  for (const topic of oldData.topics) {
-    existingTopics.set(topic.slug, topic);
-  }
-
-  // Build topic map from content items
-  const topicMap = new Map<string, { name: string; contentIds: string[] }>();
-
-  for (const item of items) {
-    if (item.status !== "ready") continue;
-
-    for (const topicName of item.topics) {
-      const slug = slugify(topicName);
-      if (!topicMap.has(slug)) {
-        topicMap.set(slug, { name: topicName, contentIds: [] });
-      }
-      topicMap.get(slug)!.contentIds.push(item.id);
-    }
-  }
-
-  // Merge: start with content-derived topics, then add existing topics not in the map
-  const topics: Topic[] = [];
-  for (const [slug, { name, contentIds }] of topicMap) {
-    const existing = existingTopics.get(slug);
-    topics.push({
-      slug,
-      name,
-      contentIds,
-      synthesis: existing?.synthesis,
-      synthesizedAt: existing?.synthesizedAt,
-    });
-  }
-
-  // Preserve manually-created topics that have no content yet
-  for (const [slug, topic] of existingTopics) {
-    if (!topicMap.has(slug)) {
-      topics.push({ ...topic, contentIds: [] });
-    }
-  }
-
-  writeData({ topics });
-}
-
 export function listTopics(): Topic[] {
-  const { topics } = readData();
-  return topics.sort((a, b) => b.contentIds.length - a.contentIds.length);
+  const db = getDb();
+
+  const rows = db
+    .prepare(
+      `SELECT t.slug, t.name, t.synthesis, t.synthesized_at,
+              COUNT(ct.content_id) as content_count
+       FROM topics t
+       LEFT JOIN content_topics ct ON ct.topic_slug = t.slug
+       LEFT JOIN content c ON c.id = ct.content_id AND c.status = 'ready'
+       GROUP BY t.slug
+       ORDER BY content_count DESC`
+    )
+    .all() as { slug: string; name: string; synthesis: string | null; synthesized_at: string | null; content_count: number }[];
+
+  return rows.map((row) => ({
+    slug: row.slug,
+    name: row.name,
+    contentIds: getContentIdsForTopic(row.slug),
+    synthesis: row.synthesis ?? undefined,
+    synthesizedAt: row.synthesized_at ?? undefined,
+  }));
 }
 
 export function getTopic(slug: string): Topic | undefined {
-  const { topics } = readData();
-  return topics.find((t) => t.slug === slug);
+  const db = getDb();
+
+  const row = db
+    .prepare("SELECT slug, name, synthesis, synthesized_at FROM topics WHERE slug = ?")
+    .get(slug) as { slug: string; name: string; synthesis: string | null; synthesized_at: string | null } | undefined;
+
+  if (!row) return undefined;
+
+  return {
+    slug: row.slug,
+    name: row.name,
+    contentIds: getContentIdsForTopic(row.slug),
+    synthesis: row.synthesis ?? undefined,
+    synthesizedAt: row.synthesized_at ?? undefined,
+  };
+}
+
+export function createTopic(name: string): Topic {
+  const db = getDb();
+  const slug = slugify(name);
+
+  db.prepare("INSERT OR IGNORE INTO topics (slug, name) VALUES (?, ?)").run(slug, name);
+
+  return getTopic(slug)!;
 }
 
 export function updateTopicSynthesis(
   slug: string,
   synthesis: string
 ): Topic | undefined {
-  const data = readData();
-  const index = data.topics.findIndex((t) => t.slug === slug);
-  if (index === -1) return undefined;
+  const db = getDb();
+  const now = new Date().toISOString();
 
-  data.topics[index].synthesis = synthesis;
-  data.topics[index].synthesizedAt = new Date().toISOString();
-  writeData(data);
-  return data.topics[index];
+  const existing = db.prepare("SELECT slug FROM topics WHERE slug = ?").get(slug);
+  if (!existing) return undefined;
+
+  db.prepare("UPDATE topics SET synthesis = ?, synthesized_at = ? WHERE slug = ?").run(
+    synthesis,
+    now,
+    slug
+  );
+
+  db.prepare("INSERT INTO synthesis_history (topic_slug, synthesis, created_at) VALUES (?, ?, ?)").run(
+    slug,
+    synthesis,
+    now
+  );
+
+  return getTopic(slug)!;
+}
+
+export function rebuildTopicIndex(): void {
+  // No-op: the content_topics join table maintains the index at write time.
+  // Kept for backward compatibility with callers.
+}
+
+function getContentIdsForTopic(slug: string): string[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT ct.content_id FROM content_topics ct
+       JOIN content c ON c.id = ct.content_id
+       WHERE ct.topic_slug = ? AND c.status = 'ready'`
+    )
+    .all(slug) as { content_id: string }[];
+  return rows.map((r) => r.content_id);
 }
