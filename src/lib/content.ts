@@ -128,8 +128,13 @@ export function listLibrary(search?: string): ContentItem[] {
   const db = getDb();
   if (search) {
     const rows = db
-      .prepare("SELECT * FROM content WHERE status = 'accepted' AND title LIKE ? ORDER BY created_at DESC")
-      .all(`%${search}%`) as ContentRow[];
+      .prepare(
+        `SELECT c.* FROM content c
+         JOIN content_fts ON content_fts.rowid = c.rowid
+         WHERE content_fts MATCH ? AND c.status = 'accepted'
+         ORDER BY rank`
+      )
+      .all(search) as ContentRow[];
     return rows.map(rowToContentItem);
   }
   const rows = db

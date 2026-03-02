@@ -181,18 +181,34 @@ describe("listLibrary", () => {
     expect(library[0].title).toBe("Accepted Video");
   });
 
-  it("filters by search term in title", async () => {
+  it("searches across title, summary, and transcript", async () => {
     const { createContent, updateContent, listLibrary } = await loadModule();
 
     const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
     updateContent(c1.id, { status: "accepted", title: "Dopamine and Focus" });
 
     const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
-    updateContent(c2.id, { status: "accepted", title: "Sleep Optimization" });
+    updateContent(c2.id, { status: "accepted", title: "Sleep Optimization", summary: "How melatonin affects circadian rhythms" });
 
+    const c3 = createContent("https://youtube.com/watch?v=c", "c", "youtube");
+    updateContent(c3.id, { status: "accepted", title: "Exercise Science", transcript: "the neuroplasticity benefits of cardiovascular exercise" });
+
+    // Match in title
     expect(listLibrary("dopamine")).toHaveLength(1);
     expect(listLibrary("dopamine")[0].title).toBe("Dopamine and Focus");
-    expect(listLibrary("OPTIMIZATION")).toHaveLength(1);
-    expect(listLibrary()).toHaveLength(2);
+
+    // Match in summary
+    expect(listLibrary("melatonin")).toHaveLength(1);
+    expect(listLibrary("melatonin")[0].title).toBe("Sleep Optimization");
+
+    // Match in transcript
+    expect(listLibrary("neuroplasticity")).toHaveLength(1);
+    expect(listLibrary("neuroplasticity")[0].title).toBe("Exercise Science");
+
+    // No match
+    expect(listLibrary("quantum")).toHaveLength(0);
+
+    // No search returns all
+    expect(listLibrary()).toHaveLength(3);
   });
 });
