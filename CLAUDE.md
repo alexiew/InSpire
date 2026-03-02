@@ -25,6 +25,7 @@ npm run dev
 - **Topics** (`src/lib/topics.ts`): Topic CRUD with JOIN queries; content_topics join table maintains index at write time
 - **Synthesis** (`src/lib/synthesize.ts`): Cross-content analysis per topic (agreements, contradictions, unique insights)
 - **Processing pipeline** (`src/lib/process-content.ts`): fetchMetadata → fetchTranscript → extract → save
+- **Subscriptions** (`src/lib/subscriptions.ts`): YouTube channel subscriptions with auto-check via Recent API poll
 
 ## Content Lifecycle
 
@@ -42,8 +43,12 @@ npm run dev
 - `GET /api/topics` — all topics
 - `GET /api/topics/[slug]` — topic with content items
 - `POST /api/topics/[slug]/synthesize` — generate cross-content synthesis
+- `POST /api/topics/merge` — merge multiple topics into one
 - `GET /api/people` — all people
 - `GET /api/people/[slug]` — person with content items
+- `GET/POST /api/subscriptions` — list and add channel subscriptions
+- `DELETE /api/subscriptions/[id]` — remove subscription
+- `POST /api/subscriptions/check` — manually trigger feed checks
 
 ## Testing
 
