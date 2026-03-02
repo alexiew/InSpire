@@ -6,7 +6,7 @@
 import { use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, ExternalLink, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/content/status-badge";
 import { TopicEditor } from "@/components/content/topic-editor";
@@ -29,6 +29,19 @@ export default function ContentDetailPage({
         <p className="text-muted-foreground">Loading...</p>
       </div>
     );
+  }
+
+  async function handleStatusChange(status: "accepted" | "discarded") {
+    await fetch(`/api/content/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (status === "discarded") {
+      router.push("/recent");
+    } else {
+      mutate();
+    }
   }
 
   async function handleDelete() {
@@ -74,6 +87,19 @@ export default function ContentDetailPage({
           <ExternalLink className="h-3 w-3" />
         </a>
       </div>
+
+      {item.status === "ready" && (
+        <div className="flex gap-3">
+          <Button onClick={() => handleStatusChange("accepted")}>
+            <Check className="h-4 w-4 mr-1" />
+            Accept into Knowledge Base
+          </Button>
+          <Button variant="outline" onClick={() => handleStatusChange("discarded")}>
+            <X className="h-4 w-4 mr-1" />
+            Discard
+          </Button>
+        </div>
+      )}
 
       <TopicEditor
         contentId={id}
