@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/content/status-badge";
 import { TopicEditor } from "@/components/content/topic-editor";
 import { TranscriptSection } from "@/components/content/transcript-section";
 import { useContentItem } from "@/hooks/use-content";
+import { slugify } from "@/lib/utils";
 
 export default function ContentDetailPage({
   params,
@@ -111,12 +112,13 @@ export default function ContentDetailPage({
           <h2 className="text-lg font-semibold">People</h2>
           <div className="flex flex-wrap gap-2">
             {item.people.map((person) => (
-              <span
+              <Link
                 key={person}
-                className="text-sm bg-muted px-2 py-1 rounded"
+                href={`/people/${slugify(person)}`}
+                className="text-sm bg-muted px-2 py-1 rounded hover:bg-muted/80 transition-colors"
               >
                 {person}
-              </span>
+              </Link>
             ))}
           </div>
         </div>
