@@ -54,12 +54,10 @@ export default function ContentDetailPage({
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <Link href="/recent">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Back
-          </Button>
-        </Link>
+        <Button variant="ghost" size="sm" onClick={() => router.back()}>
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Back
+        </Button>
         <Button variant="destructive" size="sm" onClick={handleDelete}>
           <Trash2 className="mr-1 h-4 w-4" />
           Delete
