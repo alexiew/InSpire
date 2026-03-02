@@ -23,7 +23,7 @@ export function listTopics(): Topic[] {
               COUNT(ct.content_id) as content_count
        FROM topics t
        LEFT JOIN content_topics ct ON ct.topic_slug = t.slug
-       LEFT JOIN content c ON c.id = ct.content_id AND c.status = 'ready'
+       LEFT JOIN content c ON c.id = ct.content_id AND c.status = 'accepted'
        GROUP BY t.slug
        ORDER BY content_count DESC`
     )
@@ -101,7 +101,7 @@ function getContentIdsForTopic(slug: string): string[] {
     .prepare(
       `SELECT ct.content_id FROM content_topics ct
        JOIN content c ON c.id = ct.content_id
-       WHERE ct.topic_slug = ? AND c.status = 'ready'`
+       WHERE ct.topic_slug = ? AND c.status = 'accepted'`
     )
     .all(slug) as { content_id: string }[];
   return rows.map((r) => r.content_id);

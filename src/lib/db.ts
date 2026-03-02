@@ -115,6 +115,9 @@ function initSchema(db: Database.Database): void {
     db.exec("ALTER TABLE people ADD COLUMN slug TEXT NOT NULL DEFAULT ''");
   }
 
+  // Migrate status: 'ready' → 'accepted' for existing reviewed content
+  db.exec("UPDATE content SET status = 'accepted' WHERE status = 'ready'");
+
   if (!ftsExists) {
     db.exec(`
       CREATE VIRTUAL TABLE content_fts USING fts5(

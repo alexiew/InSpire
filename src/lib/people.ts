@@ -18,7 +18,7 @@ export function listPeople(): Person[] {
       `SELECT p.id, p.name, p.slug, COUNT(c.id) as content_count
        FROM people p
        LEFT JOIN content_people cp ON cp.person_id = p.id
-       LEFT JOIN content c ON c.id = cp.content_id AND c.status = 'ready'
+       LEFT JOIN content c ON c.id = cp.content_id AND c.status = 'accepted'
        GROUP BY p.id
        HAVING content_count > 0
        ORDER BY content_count DESC`
@@ -58,7 +58,7 @@ function getContentIdsForPerson(personId: number): string[] {
     .prepare(
       `SELECT cp.content_id FROM content_people cp
        JOIN content c ON c.id = cp.content_id
-       WHERE cp.person_id = ? AND c.status = 'ready'`
+       WHERE cp.person_id = ? AND c.status = 'accepted'`
     )
     .all(personId) as { content_id: string }[];
   return rows.map((r) => r.content_id);

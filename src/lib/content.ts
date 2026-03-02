@@ -4,7 +4,7 @@
 import { getDb } from "./db";
 import { slugify } from "./utils";
 
-export type ContentStatus = "processing" | "ready" | "error";
+export type ContentStatus = "processing" | "ready" | "accepted" | "discarded" | "error";
 export type SourceType = "youtube";
 
 export interface ContentItem {
@@ -113,6 +113,14 @@ export function listContent(): ContentItem[] {
   const rows = db
     .prepare("SELECT * FROM content ORDER BY created_at DESC")
     .all() as ContentRow[];
+  return rows.map(rowToContentItem);
+}
+
+export function listRecent(limit = 9): ContentItem[] {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT * FROM content WHERE status != 'discarded' ORDER BY created_at DESC LIMIT ?")
+    .all(limit) as ContentRow[];
   return rows.map(rowToContentItem);
 }
 

@@ -1,33 +1,24 @@
 // ABOUTME: Topics page — the default landing page.
-// ABOUTME: Shows topic grid with search/sort, URL form, and recent content.
+// ABOUTME: Shows topic grid with search/sort and topic creation.
 
 "use client";
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Plus } from "lucide-react";
-import { UrlForm } from "@/components/content/url-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ContentCard } from "@/components/content/content-card";
 import { TopicCard } from "@/components/topics/topic-card";
-import { useContent } from "@/hooks/use-content";
 import { useTopics } from "@/hooks/use-topics";
 import { filterAndSortTopics, type TopicSortOrder } from "@/lib/filter-topics";
 
 export default function TopicsPage() {
-  const { data: items, mutate: mutateContent } = useContent();
   const { data: topics, mutate: mutateTopics } = useTopics();
   const [topicSearch, setTopicSearch] = useState("");
   const [topicSort, setTopicSort] = useState<TopicSortOrder>("count");
   const [newTopicName, setNewTopicName] = useState("");
   const [creatingTopic, setCreatingTopic] = useState(false);
   const router = useRouter();
-
-  function handleSubmitted() {
-    mutateContent();
-    mutateTopics();
-  }
 
   async function handleCreateTopic(e: React.FormEvent) {
     e.preventDefault();
@@ -47,7 +38,6 @@ export default function TopicsPage() {
   }
 
   const hasTopics = topics && topics.length > 0;
-  const hasItems = items && items.length > 0;
   const filteredTopics = useMemo(
     () => (topics ? filterAndSortTopics(topics, topicSearch, topicSort) : []),
     [topics, topicSearch, topicSort]
@@ -55,11 +45,9 @@ export default function TopicsPage() {
 
   return (
     <div className="mx-auto max-w-4xl p-6 space-y-8">
-      <UrlForm onSubmitted={handleSubmitted} />
-
-      {!hasTopics && !hasItems && (
+      {!hasTopics && (
         <p className="text-center text-muted-foreground py-12">
-          No content yet. Paste a YouTube URL above to get started.
+          No topics yet. Submit content from the Recent page to get started.
         </p>
       )}
 
@@ -125,17 +113,6 @@ export default function TopicsPage() {
               No topics matching &ldquo;{topicSearch}&rdquo;
             </p>
           )}
-        </section>
-      )}
-
-      {hasItems && (
-        <section>
-          <h2 className="text-lg font-semibold mb-3">Recent</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {items.map((item) => (
-              <ContentCard key={item.id} item={item} />
-            ))}
-          </div>
         </section>
       )}
     </div>

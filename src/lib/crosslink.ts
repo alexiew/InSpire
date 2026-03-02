@@ -33,9 +33,9 @@ export async function findRelatedContent(topicSlug: string): Promise<CrosslinkCa
   const allContent = listContent();
   const existingIds = new Set(topic.contentIds);
 
-  // Candidates: ready items not already in this topic, with summaries
+  // Candidates: accepted items not already in this topic, with summaries
   const candidates = allContent.filter(
-    (item) => item.status === "ready" && !existingIds.has(item.id) && item.summary
+    (item) => item.status === "accepted" && !existingIds.has(item.id) && item.summary
   );
 
   if (candidates.length === 0) return [];

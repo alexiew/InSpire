@@ -117,3 +117,45 @@ describe("deleteContent", () => {
     expect(deleteContent("nope")).toBe(false);
   });
 });
+
+describe("listRecent", () => {
+  it("returns newest items excluding discarded", async () => {
+    const { createContent, updateContent, listRecent } = await loadModule();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    await new Promise((r) => setTimeout(r, 10));
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    await new Promise((r) => setTimeout(r, 10));
+    const c3 = createContent("https://youtube.com/watch?v=c", "c", "youtube");
+
+    updateContent(c2.id, { status: "discarded" });
+
+    const recent = listRecent();
+    expect(recent).toHaveLength(2);
+    expect(recent[0].id).toBe(c3.id);
+    expect(recent[1].id).toBe(c1.id);
+  });
+
+  it("respects the limit parameter", async () => {
+    const { createContent, listRecent } = await loadModule();
+
+    for (let i = 0; i < 5; i++) {
+      createContent(`https://youtube.com/watch?v=${i}`, `${i}`, "youtube");
+    }
+
+    expect(listRecent(3)).toHaveLength(3);
+  });
+
+  it("includes both ready and accepted items", async () => {
+    const { createContent, updateContent, listRecent } = await loadModule();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { status: "accepted" });
+
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    updateContent(c2.id, { status: "ready" });
+
+    const recent = listRecent();
+    expect(recent).toHaveLength(2);
+  });
+});

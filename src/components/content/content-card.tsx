@@ -1,7 +1,8 @@
 // ABOUTME: Card displaying a content item's thumbnail, title, author, and topics.
-// ABOUTME: Links to the content detail page, shows summary preview.
+// ABOUTME: Links to the content detail page, with optional accept/discard actions.
 
 import Link from "next/link";
+import { Check, X } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -9,15 +10,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./status-badge";
 import { TopicBadge } from "./topic-badge";
 import type { ContentItem } from "@/lib/content";
 
 interface ContentCardProps {
   item: ContentItem;
+  onAccept?: (id: string) => void;
+  onDiscard?: (id: string) => void;
 }
 
-export function ContentCard({ item }: ContentCardProps) {
+export function ContentCard({ item, onAccept, onDiscard }: ContentCardProps) {
   return (
     <Card className="hover:border-primary/30 transition-colors h-full flex flex-col">
       <Link href={`/content/${item.id}`} className="flex-1">
@@ -53,6 +57,29 @@ export function ContentCard({ item }: ContentCardProps) {
             {item.topics.map((t) => (
               <TopicBadge key={t} topic={t} />
             ))}
+          </div>
+        </CardContent>
+      )}
+      {onAccept && onDiscard && item.status === "ready" && (
+        <CardContent className="pt-2 border-t">
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={() => onAccept(item.id)}
+            >
+              <Check className="h-4 w-4 mr-1" />
+              Accept
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+              onClick={() => onDiscard(item.id)}
+            >
+              <X className="h-4 w-4 mr-1" />
+              Discard
+            </Button>
           </div>
         </CardContent>
       )}

@@ -7,12 +7,16 @@ import type { ContentStatus } from "@/lib/content";
 const variants: Record<ContentStatus, "default" | "secondary" | "destructive"> = {
   processing: "secondary",
   ready: "default",
+  accepted: "default",
+  discarded: "secondary",
   error: "destructive",
 };
 
 const labels: Record<ContentStatus, string> = {
   processing: "Processing",
   ready: "Ready",
+  accepted: "Accepted",
+  discarded: "Discarded",
   error: "Error",
 };
 

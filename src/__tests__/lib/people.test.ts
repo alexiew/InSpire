@@ -38,13 +38,13 @@ describe("listPeople", () => {
     const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
     updateContent(c1.id, {
       people: ["Andrew Huberman", "Anna Lembke"],
-      status: "ready",
+      status: "accepted",
     });
 
     const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
     updateContent(c2.id, {
       people: ["Andrew Huberman", "David Goggins"],
-      status: "ready",
+      status: "accepted",
     });
 
     const people = listPeople();
@@ -60,7 +60,7 @@ describe("listPeople", () => {
     const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
     updateContent(c1.id, {
       people: ["Andrew Huberman"],
-      status: "ready",
+      status: "accepted",
     });
 
     const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
@@ -83,7 +83,7 @@ describe("getPerson", () => {
     const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
     updateContent(c1.id, {
       people: ["Dr. Anna Lembke"],
-      status: "ready",
+      status: "accepted",
     });
 
     const person = getPerson("dr-anna-lembke");

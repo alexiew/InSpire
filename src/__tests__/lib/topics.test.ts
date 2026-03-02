@@ -44,13 +44,13 @@ describe("rebuildTopicIndex", () => {
     const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
     updateContent(c1.id, {
       topics: ["longevity", "vitamin D"],
-      status: "ready",
+      status: "accepted",
     });
 
     const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
     updateContent(c2.id, {
       topics: ["vitamin D", "metabolism"],
-      status: "ready",
+      status: "accepted",
     });
 
     rebuildTopicIndex();
@@ -70,7 +70,7 @@ describe("rebuildTopicIndex", () => {
     const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
     updateContent(c1.id, {
       topics: ["longevity"],
-      status: "ready",
+      status: "accepted",
     });
 
     // This one is still processing — no topics yet
@@ -96,7 +96,7 @@ describe("getTopic", () => {
       await loadModules();
 
     const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
-    updateContent(c1.id, { topics: ["vitamin D"], status: "ready" });
+    updateContent(c1.id, { topics: ["vitamin D"], status: "accepted" });
 
     rebuildTopicIndex();
     const topic = getTopic("vitamin-d");
@@ -131,7 +131,7 @@ describe("createTopic", () => {
       await loadModules();
 
     const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
-    updateContent(c1.id, { topics: ["longevity"], status: "ready" });
+    updateContent(c1.id, { topics: ["longevity"], status: "accepted" });
     rebuildTopicIndex();
 
     const topic = createTopic("longevity");
@@ -162,7 +162,7 @@ describe("updateTopicSynthesis", () => {
     } = await loadModules();
 
     const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
-    updateContent(c1.id, { topics: ["longevity"], status: "ready" });
+    updateContent(c1.id, { topics: ["longevity"], status: "accepted" });
 
     rebuildTopicIndex();
     updateTopicSynthesis("longevity", "These sources agree on X.");
