@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { StatusBadge } from "./status-badge";
-import { TopicBadge } from "./topic-badge";
 import type { ContentItem } from "@/lib/content";
 
 interface ContentCardProps {
@@ -47,15 +46,6 @@ export function ContentCard({ item }: ContentCardProps) {
           </CardContent>
         )}
       </Link>
-      {item.topics.length > 0 && (
-        <CardContent className="pt-0">
-          <div className="flex flex-wrap gap-1">
-            {item.topics.map((t) => (
-              <TopicBadge key={t} topic={t} />
-            ))}
-          </div>
-        </CardContent>
-      )}
     </Card>
   );
 }
