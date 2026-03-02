@@ -1,0 +1,99 @@
+// ABOUTME: Tests for people data layer.
+// ABOUTME: Verifies listing and retrieval of people across content items.
+
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdtempSync, rmSync } from "fs";
+import path from "path";
+import os from "os";
+import { closeDb } from "@/lib/db";
+
+let tmpDir: string;
+
+beforeEach(() => {
+  tmpDir = mkdtempSync(path.join(os.tmpdir(), "inspire-test-"));
+  process.env.INSPIRE_DATA_DIR = tmpDir;
+});
+
+afterEach(() => {
+  closeDb();
+  rmSync(tmpDir, { recursive: true, force: true });
+  delete process.env.INSPIRE_DATA_DIR;
+});
+
+async function loadModules() {
+  const content = await import("@/lib/content");
+  const people = await import("@/lib/people");
+  return { ...content, ...people };
+}
+
+describe("listPeople", () => {
+  it("returns empty array when no content exists", async () => {
+    const { listPeople } = await loadModules();
+    expect(listPeople()).toEqual([]);
+  });
+
+  it("returns people sorted by content count descending", async () => {
+    const { createContent, updateContent, listPeople } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, {
+      people: ["Andrew Huberman", "Anna Lembke"],
+      status: "ready",
+    });
+
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    updateContent(c2.id, {
+      people: ["Andrew Huberman", "David Goggins"],
+      status: "ready",
+    });
+
+    const people = listPeople();
+    expect(people).toHaveLength(3);
+    expect(people[0].name).toBe("Andrew Huberman");
+    expect(people[0].contentIds).toHaveLength(2);
+    expect(people[0].slug).toBe("andrew-huberman");
+  });
+
+  it("excludes content items that are not ready", async () => {
+    const { createContent, updateContent, listPeople } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, {
+      people: ["Andrew Huberman"],
+      status: "ready",
+    });
+
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    updateContent(c2.id, {
+      people: ["Andrew Huberman", "David Goggins"],
+      status: "processing",
+    });
+
+    const people = listPeople();
+    expect(people).toHaveLength(1);
+    expect(people[0].name).toBe("Andrew Huberman");
+    expect(people[0].contentIds).toHaveLength(1);
+  });
+});
+
+describe("getPerson", () => {
+  it("returns a person by slug with content IDs", async () => {
+    const { createContent, updateContent, getPerson } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, {
+      people: ["Dr. Anna Lembke"],
+      status: "ready",
+    });
+
+    const person = getPerson("dr-anna-lembke");
+    expect(person).toBeDefined();
+    expect(person!.name).toBe("Dr. Anna Lembke");
+    expect(person!.contentIds).toContain(c1.id);
+  });
+
+  it("returns undefined for nonexistent slug", async () => {
+    const { getPerson } = await loadModules();
+    expect(getPerson("nonexistent")).toBeUndefined();
+  });
+});
