@@ -86,6 +86,12 @@ export function parseExtraction(raw: string): ExtractionResult {
   }
 }
 
+export function filterAuthor(people: string[], author: string): string[] {
+  if (!author) return people;
+  const authorLower = author.toLowerCase();
+  return people.filter((p) => p.toLowerCase() !== authorLower);
+}
+
 export async function extract(
   title: string,
   transcript: string,

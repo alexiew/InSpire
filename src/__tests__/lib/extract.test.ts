@@ -2,7 +2,7 @@
 // ABOUTME: Verifies that markdown + JSON output is correctly split and parsed.
 
 import { describe, it, expect } from "vitest";
-import { parseExtraction, buildExtractionPrompt } from "@/lib/extract";
+import { parseExtraction, buildExtractionPrompt, filterAuthor } from "@/lib/extract";
 
 describe("parseExtraction", () => {
   it("parses markdown summary with trailing JSON block", () => {
@@ -120,5 +120,27 @@ describe("buildExtractionPrompt", () => {
     expect(prompt).toContain("knowledge base already contains these topics");
     expect(prompt).toContain("longevity, neuroplasticity, intermittent fasting");
     expect(prompt).toContain("REUSE existing topics");
+  });
+});
+
+describe("filterAuthor", () => {
+  it("removes the author from the people list", () => {
+    const people = ["Lex Fridman", "Elon Musk", "Joe Rogan"];
+    expect(filterAuthor(people, "Lex Fridman")).toEqual(["Elon Musk", "Joe Rogan"]);
+  });
+
+  it("matches case-insensitively", () => {
+    const people = ["lex fridman", "Elon Musk"];
+    expect(filterAuthor(people, "Lex Fridman")).toEqual(["Elon Musk"]);
+  });
+
+  it("returns all people when author is empty", () => {
+    const people = ["Lex Fridman", "Elon Musk"];
+    expect(filterAuthor(people, "")).toEqual(["Lex Fridman", "Elon Musk"]);
+  });
+
+  it("returns all people when no match", () => {
+    const people = ["Elon Musk", "Joe Rogan"];
+    expect(filterAuthor(people, "Lex Fridman")).toEqual(["Elon Musk", "Joe Rogan"]);
   });
 });

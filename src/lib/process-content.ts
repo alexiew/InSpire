@@ -4,7 +4,7 @@
 import { getContent, updateContent } from "./content";
 import { fetchMetadata, fetchTranscript } from "./youtube";
 import { fetchPodcastTranscript } from "./podcast";
-import { extract } from "./extract";
+import { extract, filterAuthor } from "./extract";
 import { listTopics, rebuildTopicIndex } from "./topics";
 
 export async function processContent(id: string): Promise<void> {
@@ -35,11 +35,12 @@ export async function processContent(id: string): Promise<void> {
     const existingTopicNames = listTopics().map((t) => t.name);
     const result = await extract(current!.title, transcript, existingTopicNames);
     const mergedTopics = [...new Set([...(current?.topics || []), ...result.topics])];
+    const people = filterAuthor(result.people, current!.author);
     updateContent(id, {
       summary: result.summary,
       topics: mergedTopics,
       claims: result.claims,
-      people: result.people,
+      people,
       status: "ready",
     });
 
