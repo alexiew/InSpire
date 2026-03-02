@@ -26,13 +26,24 @@ npm run dev
 - **Synthesis** (`src/lib/synthesize.ts`): Cross-content analysis per topic (agreements, contradictions, unique insights)
 - **Processing pipeline** (`src/lib/process-content.ts`): fetchMetadata → fetchTranscript → extract → save
 
+## Content Lifecycle
+
+`processing` → `ready` → `accepted` | `discarded` | `error`
+
+- **ready**: processed, visible in Recent, NOT in topics/people/synthesis
+- **accepted**: in the knowledge base, still visible in Recent (if within newest 9)
+- **discarded**: hidden from everywhere
+
 ## Key Routes
 
 - `GET/POST /api/content` — list and submit content
-- `GET/DELETE /api/content/[id]` — single content item
+- `GET/PATCH/DELETE /api/content/[id]` — single content item; PATCH accepts `{ topics, status }`
+- `GET /api/recent` — newest 9 non-discarded items
 - `GET /api/topics` — all topics
 - `GET /api/topics/[slug]` — topic with content items
 - `POST /api/topics/[slug]/synthesize` — generate cross-content synthesis
+- `GET /api/people` — all people
+- `GET /api/people/[slug]` — person with content items
 
 ## Testing
 
