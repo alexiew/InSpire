@@ -13,7 +13,7 @@ npm run dev
 
 - Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, SWR
 - SQLite storage via better-sqlite3 (`data/inspire.db`)
-- YouTube transcript extraction via `summarize` CLI (`@steipete/summarize`)
+- Transcript extraction via `summarize` CLI (`@steipete/summarize`) — YouTube captions + podcast audio transcription
 - AI extraction and synthesis via `claude --print` CLI (uses Max plan, no API costs)
 - Vitest for testing
 
@@ -24,8 +24,9 @@ npm run dev
 - **Extraction** (`src/lib/extract.ts`): Claude produces markdown summary + JSON metadata block
 - **Topics** (`src/lib/topics.ts`): Topic CRUD with JOIN queries; content_topics join table maintains index at write time
 - **Synthesis** (`src/lib/synthesize.ts`): Cross-content analysis per topic (agreements, contradictions, unique insights)
-- **Processing pipeline** (`src/lib/process-content.ts`): fetchMetadata → fetchTranscript → extract → save
-- **Subscriptions** (`src/lib/subscriptions.ts`): YouTube channel subscriptions with auto-check via Recent API poll
+- **Podcast** (`src/lib/podcast.ts`): Podcast RSS feed parsing and audio transcript extraction
+- **Processing pipeline** (`src/lib/process-content.ts`): fetchMetadata → fetchTranscript → extract → save (branches on sourceType for YouTube vs podcast)
+- **Subscriptions** (`src/lib/subscriptions.ts`): YouTube channel and podcast feed subscriptions with auto-check via Recent API poll
 
 ## Content Lifecycle
 
@@ -46,7 +47,7 @@ npm run dev
 - `POST /api/topics/merge` — merge multiple topics into one
 - `GET /api/people` — all people
 - `GET /api/people/[slug]` — person with content items
-- `GET/POST /api/subscriptions` — list and add channel subscriptions
+- `GET/POST /api/subscriptions` — list and add subscriptions (YouTube channels or podcast RSS feeds)
 - `DELETE /api/subscriptions/[id]` — remove subscription
 - `POST /api/subscriptions/check` — manually trigger feed checks
 
