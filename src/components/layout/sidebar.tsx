@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Clock, Hash, Users, FolderOpen, Rss } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Logo } from "./logo";
 
 const navItems = [
   { href: "/recent", label: "Recent", icon: Clock },
@@ -28,9 +29,9 @@ export function Sidebar() {
 
   return (
     <aside className="flex w-60 flex-col border-r bg-muted/30">
-      <div className="flex h-14 items-center border-b px-5">
-        <Link href="/" className="text-lg font-semibold">
-          InSpire
+      <div className="flex items-center border-b px-4 py-3">
+        <Link href="/recent">
+          <Logo />
         </Link>
       </div>
       <nav className="flex-1 space-y-1 p-3">

@@ -47,13 +47,13 @@ export default function ContentDetailPage({
   async function handleDelete() {
     if (!confirm("Delete this content?")) return;
     await fetch(`/api/content/${id}`, { method: "DELETE" });
-    router.push("/");
+    router.push("/recent");
   }
 
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <Link href="/">
+        <Link href="/recent">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="mr-1 h-4 w-4" />
             Back
@@ -83,7 +83,7 @@ export default function ContentDetailPage({
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
         >
-          Watch on YouTube
+          {item.sourceType === "podcast" ? "Listen to episode" : "Watch on YouTube"}
           <ExternalLink className="h-3 w-3" />
         </a>
       </div>
