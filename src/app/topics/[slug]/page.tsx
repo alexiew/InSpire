@@ -25,8 +25,9 @@ export default function TopicDetailPage({
 
   async function handleDelete() {
     if (!confirm(`Delete topic "${topic?.name}"?`)) return;
-    router.push("/");
     await fetch(`/api/topics/${slug}`, { method: "DELETE" });
+    await mutate(undefined, { revalidate: false });
+    router.push("/");
   }
 
   if (!topic) {
