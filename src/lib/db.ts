@@ -76,7 +76,8 @@ function initSchema(db: Database.Database): void {
 
     CREATE TABLE IF NOT EXISTS people (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE
+      name TEXT NOT NULL UNIQUE,
+      slug TEXT NOT NULL DEFAULT ''
     );
 
     CREATE TABLE IF NOT EXISTS content_people (
@@ -107,6 +108,12 @@ function initSchema(db: Database.Database): void {
   const ftsExists = db
     .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='content_fts'")
     .get();
+
+  // Migrations for existing databases
+  const peopleColumns = db.prepare("PRAGMA table_info(people)").all() as { name: string }[];
+  if (!peopleColumns.some((c) => c.name === "slug")) {
+    db.exec("ALTER TABLE people ADD COLUMN slug TEXT NOT NULL DEFAULT ''");
+  }
 
   if (!ftsExists) {
     db.exec(`

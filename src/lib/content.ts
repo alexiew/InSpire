@@ -101,7 +101,8 @@ function syncContentPeople(id: string, people: string[]): void {
   db.prepare("DELETE FROM content_people WHERE content_id = ?").run(id);
 
   for (const name of people) {
-    db.prepare("INSERT OR IGNORE INTO people (name) VALUES (?)").run(name);
+    const personSlug = slugify(name);
+    db.prepare("INSERT OR IGNORE INTO people (name, slug) VALUES (?, ?)").run(name, personSlug);
     const person = db.prepare("SELECT id FROM people WHERE name = ?").get(name) as { id: number };
     db.prepare("INSERT OR IGNORE INTO content_people (content_id, person_id) VALUES (?, ?)").run(id, person.id);
   }
