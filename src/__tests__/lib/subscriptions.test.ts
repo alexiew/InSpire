@@ -1,5 +1,5 @@
 // ABOUTME: Tests for subscription CRUD operations.
-// ABOUTME: Verifies listing, creation, deletion, and due-check logic.
+// ABOUTME: Verifies listing, creation, deletion, due-check logic, and podcast support.
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "fs";
@@ -34,10 +34,10 @@ describe("listSubscriptions", () => {
 });
 
 describe("createSubscription", () => {
-  it("creates a subscription and retrieves it", async () => {
+  it("creates a youtube subscription and retrieves it", async () => {
     const { createSubscription, listSubscriptions } = await loadModules();
 
-    const sub = createSubscription("UC1234567890abcdefghij", "Huberman Lab");
+    const sub = createSubscription("youtube", "UC1234567890abcdefghij", "Huberman Lab");
     expect(sub.sourceIdentifier).toBe("UC1234567890abcdefghij");
     expect(sub.name).toBe("Huberman Lab");
     expect(sub.sourceType).toBe("youtube");
@@ -49,10 +49,19 @@ describe("createSubscription", () => {
     expect(all[0].name).toBe("Huberman Lab");
   });
 
-  it("rejects duplicate channel IDs", async () => {
+  it("creates a podcast subscription", async () => {
     const { createSubscription } = await loadModules();
-    createSubscription("UC1234567890abcdefghij", "Channel A");
-    expect(() => createSubscription("UC1234567890abcdefghij", "Channel B")).toThrow();
+
+    const sub = createSubscription("podcast", "https://feeds.example.com/mypod", "My Podcast");
+    expect(sub.sourceType).toBe("podcast");
+    expect(sub.sourceIdentifier).toBe("https://feeds.example.com/mypod");
+    expect(sub.name).toBe("My Podcast");
+  });
+
+  it("rejects duplicate source identifiers", async () => {
+    const { createSubscription } = await loadModules();
+    createSubscription("youtube", "UC1234567890abcdefghij", "Channel A");
+    expect(() => createSubscription("youtube", "UC1234567890abcdefghij", "Channel B")).toThrow();
   });
 });
 
@@ -61,7 +70,7 @@ describe("deleteSubscription", () => {
     const { createSubscription, deleteSubscription, listSubscriptions } =
       await loadModules();
 
-    const sub = createSubscription("UC1234567890abcdefghij", "Test");
+    const sub = createSubscription("youtube", "UC1234567890abcdefghij", "Test");
     expect(deleteSubscription(sub.id)).toBe(true);
     expect(listSubscriptions()).toHaveLength(0);
   });
@@ -75,7 +84,7 @@ describe("deleteSubscription", () => {
 describe("getDueSubscriptions", () => {
   it("returns subscriptions never checked", async () => {
     const { createSubscription, getDueSubscriptions } = await loadModules();
-    createSubscription("UC1234567890abcdefghij", "Test");
+    createSubscription("youtube", "UC1234567890abcdefghij", "Test");
 
     const due = getDueSubscriptions();
     expect(due).toHaveLength(1);
@@ -85,7 +94,7 @@ describe("getDueSubscriptions", () => {
     const { createSubscription, markChecked, getDueSubscriptions } =
       await loadModules();
 
-    const sub = createSubscription("UC1234567890abcdefghij", "Test");
+    const sub = createSubscription("youtube", "UC1234567890abcdefghij", "Test");
     markChecked(sub.id);
 
     const due = getDueSubscriptions();
@@ -93,15 +102,21 @@ describe("getDueSubscriptions", () => {
   });
 });
 
-describe("contentExistsForVideo", () => {
-  it("returns false when video not in database", async () => {
-    const { contentExistsForVideo } = await loadModules();
-    expect(contentExistsForVideo("nonexistent_id")).toBe(false);
+describe("contentExists", () => {
+  it("returns false when source_id not in database", async () => {
+    const { contentExists } = await loadModules();
+    expect(contentExists("nonexistent_id")).toBe(false);
   });
 
-  it("returns true when video already ingested", async () => {
-    const { createContent, contentExistsForVideo } = await loadModules();
+  it("returns true when youtube video already ingested", async () => {
+    const { createContent, contentExists } = await loadModules();
     createContent("https://youtube.com/watch?v=abc123def45", "abc123def45", "youtube");
-    expect(contentExistsForVideo("abc123def45")).toBe(true);
+    expect(contentExists("abc123def45")).toBe(true);
+  });
+
+  it("returns true when podcast episode already ingested", async () => {
+    const { createContent, contentExists } = await loadModules();
+    createContent("https://example.com/ep1.mp3", "ep-001-guid", "podcast");
+    expect(contentExists("ep-001-guid")).toBe(true);
   });
 });

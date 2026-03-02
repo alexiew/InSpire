@@ -5,7 +5,7 @@ import { getDb } from "./db";
 import { slugify } from "./utils";
 
 export type ContentStatus = "processing" | "ready" | "accepted" | "discarded" | "error";
-export type SourceType = "youtube";
+export type SourceType = "youtube" | "podcast";
 
 export interface ContentItem {
   id: string;

@@ -3,6 +3,10 @@
 
 import { execFile } from "child_process";
 
+export function isYouTubeUrl(url: string): boolean {
+  return /youtube\.com|youtu\.be/i.test(url);
+}
+
 export function extractVideoId(url: string): string | null {
   if (!url) return null;
 

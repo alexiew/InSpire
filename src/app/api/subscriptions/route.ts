@@ -1,9 +1,10 @@
 // ABOUTME: API route for listing and creating subscriptions.
-// ABOUTME: POST resolves a YouTube channel URL, subscribes, and ingests recent videos.
+// ABOUTME: POST detects YouTube vs podcast URLs, subscribes, and ingests recent content.
 
 import { NextRequest, NextResponse } from "next/server";
 import { listSubscriptions, createSubscription, checkSubscription } from "@/lib/subscriptions";
-import { resolveChannelId } from "@/lib/youtube";
+import { isYouTubeUrl, resolveChannelId } from "@/lib/youtube";
+import { fetchPodcastFeed } from "@/lib/podcast";
 
 export const dynamic = "force-dynamic";
 
@@ -20,15 +21,21 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { channelId, name } = await resolveChannelId(url);
-    const sub = createSubscription(channelId, name);
+    let sub;
+    if (isYouTubeUrl(url)) {
+      const { channelId, name } = await resolveChannelId(url);
+      sub = createSubscription("youtube", channelId, name);
+    } else {
+      const feed = await fetchPodcastFeed(url);
+      sub = createSubscription("podcast", url, feed.title);
+    }
 
-    // Ingest recent videos in the background
+    // Ingest recent content in the background
     checkSubscription(sub.id).catch(() => {});
 
     return NextResponse.json(sub, { status: 201 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to resolve channel";
+    const message = err instanceof Error ? err.message : "Failed to subscribe";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

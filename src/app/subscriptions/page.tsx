@@ -64,7 +64,7 @@ export default function SubscriptionsPage() {
     <div className="mx-auto max-w-4xl p-6 space-y-8">
       <form onSubmit={handleSubscribe} className="flex gap-2">
         <Input
-          placeholder="YouTube channel URL (e.g., youtube.com/@hubermanlab)"
+          placeholder="YouTube channel or podcast RSS feed URL"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           className="flex-1"
@@ -106,7 +106,7 @@ export default function SubscriptionsPage() {
                 <div>
                   <CardTitle className="text-base">{sub.name}</CardTitle>
                   <CardDescription>
-                    {formatLastChecked(sub.lastCheckedAt)}
+                    {sub.sourceType === "podcast" ? "Podcast" : "YouTube"} · {formatLastChecked(sub.lastCheckedAt)}
                   </CardDescription>
                 </div>
                 <Button
@@ -122,7 +122,7 @@ export default function SubscriptionsPage() {
         </div>
       ) : subscriptions ? (
         <p className="text-center text-muted-foreground py-12">
-          No subscriptions yet. Paste a YouTube channel URL above to subscribe.
+          No subscriptions yet. Paste a YouTube channel or podcast feed URL above to subscribe.
         </p>
       ) : null}
     </div>

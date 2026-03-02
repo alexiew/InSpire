@@ -3,6 +3,7 @@
 
 import { getContent, updateContent } from "./content";
 import { fetchMetadata, fetchTranscript } from "./youtube";
+import { fetchPodcastTranscript } from "./podcast";
 import { extract } from "./extract";
 import { rebuildTopicIndex } from "./topics";
 
@@ -13,21 +14,25 @@ export async function processContent(id: string): Promise<void> {
       throw new Error(`Content ${id} not found`);
     }
 
-    // Fetch metadata
-    const metadata = await fetchMetadata(item.sourceId);
-    updateContent(id, {
-      title: metadata.title,
-      author: metadata.author,
-      thumbnailUrl: metadata.thumbnailUrl,
-    });
+    // Fetch metadata (YouTube only — podcast metadata is set at creation time)
+    if (item.sourceType === "youtube") {
+      const metadata = await fetchMetadata(item.sourceId);
+      updateContent(id, {
+        title: metadata.title,
+        author: metadata.author,
+        thumbnailUrl: metadata.thumbnailUrl,
+      });
+    }
 
     // Fetch transcript
-    const transcript = await fetchTranscript(item.sourceId);
+    const transcript = item.sourceType === "podcast"
+      ? await fetchPodcastTranscript(item.url)
+      : await fetchTranscript(item.sourceId);
     updateContent(id, { transcript });
 
     // Extract structured knowledge, merging with any pre-assigned topics
     const current = getContent(id);
-    const result = await extract(metadata.title, transcript);
+    const result = await extract(current!.title, transcript);
     const mergedTopics = [...new Set([...(current?.topics || []), ...result.topics])];
     updateContent(id, {
       summary: result.summary,
