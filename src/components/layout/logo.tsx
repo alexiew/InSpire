@@ -9,8 +9,8 @@ export function Logo() {
         <span className="text-lg font-semibold">InSpire</span>
       </div>
       <div className="text-[10px] text-muted-foreground leading-tight pl-[38px]">
-        <div>Simple solutions to</div>
-        <div>impossible problems</div>
+        <div>Simple solutions</div>
+        <div>to impossible problems</div>
       </div>
     </div>
   );
