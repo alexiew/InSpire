@@ -1,0 +1,53 @@
+// ABOUTME: Left sidebar navigation for the app shell.
+// ABOUTME: Shows nav links with active state based on current route.
+
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Hash, Users, FolderOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const navItems = [
+  { href: "/", label: "Topics", icon: Hash },
+  { href: "/people", label: "People", icon: Users },
+  { href: "/categories", label: "Categories", icon: FolderOpen },
+];
+
+export function Sidebar() {
+  const pathname = usePathname();
+
+  function isActive(href: string) {
+    if (href === "/") {
+      return pathname === "/" || pathname.startsWith("/topics");
+    }
+    return pathname.startsWith(href);
+  }
+
+  return (
+    <aside className="flex w-60 flex-col border-r bg-muted/30">
+      <div className="flex h-14 items-center border-b px-5">
+        <Link href="/" className="text-lg font-semibold">
+          InSpire
+        </Link>
+      </div>
+      <nav className="flex-1 space-y-1 p-3">
+        {navItems.map(({ href, label, icon: Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className={cn(
+              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              isActive(href)
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </Link>
+        ))}
+      </nav>
+    </aside>
+  );
+}
