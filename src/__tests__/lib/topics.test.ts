@@ -151,6 +151,65 @@ describe("createTopic", () => {
   });
 });
 
+describe("mergeTopics", () => {
+  it("merges two topics and consolidates content associations", async () => {
+    const { createContent, updateContent, mergeTopics, getTopic } =
+      await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { topics: ["agentic AI"], status: "accepted" });
+
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    updateContent(c2.id, { topics: ["AI coding"], status: "accepted" });
+
+    const merged = mergeTopics(["agentic-ai", "ai-coding"], "AI Development");
+    expect(merged.slug).toBe("ai-development");
+    expect(merged.name).toBe("AI Development");
+    expect(merged.contentIds).toHaveLength(2);
+    expect(merged.contentIds).toContain(c1.id);
+    expect(merged.contentIds).toContain(c2.id);
+
+    // Source topics should be gone
+    expect(getTopic("agentic-ai")).toBeUndefined();
+    expect(getTopic("ai-coding")).toBeUndefined();
+  });
+
+  it("deduplicates content that appears in multiple source topics", async () => {
+    const { createContent, updateContent, mergeTopics } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, {
+      topics: ["topic-a", "topic-b"],
+      status: "accepted",
+    });
+
+    const merged = mergeTopics(["topic-a", "topic-b"], "combined");
+    expect(merged.contentIds).toHaveLength(1);
+    expect(merged.contentIds).toContain(c1.id);
+  });
+
+  it("merges into an existing topic when target name matches a source", async () => {
+    const { createContent, updateContent, mergeTopics, getTopic } =
+      await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { topics: ["AI"], status: "accepted" });
+
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    updateContent(c2.id, { topics: ["machine learning"], status: "accepted" });
+
+    const merged = mergeTopics(["ai", "machine-learning"], "AI");
+    expect(merged.slug).toBe("ai");
+    expect(merged.contentIds).toHaveLength(2);
+    expect(getTopic("machine-learning")).toBeUndefined();
+  });
+
+  it("throws when fewer than 2 slugs are provided", async () => {
+    const { mergeTopics } = await loadModules();
+    expect(() => mergeTopics(["only-one"], "target")).toThrow();
+  });
+});
+
 describe("updateTopicSynthesis", () => {
   it("stores synthesis on a topic", async () => {
     const {

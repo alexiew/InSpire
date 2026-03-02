@@ -1,14 +1,15 @@
 // ABOUTME: Topics page — the default landing page.
-// ABOUTME: Shows topic grid with search/sort and topic creation.
+// ABOUTME: Shows topic grid with search/sort, topic creation, and merge mode.
 
 "use client";
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Merge } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { TopicCard } from "@/components/topics/topic-card";
+import { MergeDialog } from "@/components/topics/merge-dialog";
 import { useTopics } from "@/hooks/use-topics";
 import { filterAndSortTopics, type TopicSortOrder } from "@/lib/filter-topics";
 
@@ -18,6 +19,9 @@ export default function TopicsPage() {
   const [topicSort, setTopicSort] = useState<TopicSortOrder>("count");
   const [newTopicName, setNewTopicName] = useState("");
   const [creatingTopic, setCreatingTopic] = useState(false);
+  const [merging, setMerging] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const router = useRouter();
 
   async function handleCreateTopic(e: React.FormEvent) {
@@ -37,10 +41,29 @@ export default function TopicsPage() {
     }
   }
 
+  function toggleSelection(slug: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  }
+
+  function exitMergeMode() {
+    setMerging(false);
+    setSelected(new Set());
+  }
+
   const hasTopics = topics && topics.length > 0;
   const filteredTopics = useMemo(
     () => (topics ? filterAndSortTopics(topics, topicSearch, topicSort) : []),
     [topics, topicSearch, topicSort]
+  );
+
+  const selectedTopics = useMemo(
+    () => (topics ?? []).filter((t) => selected.has(t.slug)),
+    [topics, selected]
   );
 
   return (
@@ -55,7 +78,16 @@ export default function TopicsPage() {
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {creatingTopic ? (
+              {merging ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={exitMergeMode}
+                >
+                  Cancel
+                </Button>
+              ) : creatingTopic ? (
                 <form onSubmit={handleCreateTopic} className="flex items-center gap-1">
                   <Input
                     autoFocus
@@ -70,15 +102,26 @@ export default function TopicsPage() {
                   </Button>
                 </form>
               ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8"
-                  onClick={() => setCreatingTopic(true)}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  New Topic
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => setCreatingTopic(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    New Topic
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => setMerging(true)}
+                  >
+                    <Merge className="h-4 w-4 mr-1" />
+                    Merge
+                  </Button>
+                </>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -103,9 +146,22 @@ export default function TopicsPage() {
               </Button>
             </div>
           </div>
+
+          {merging && (
+            <p className="text-sm text-muted-foreground">
+              Select 2 or more topics to merge, then click &ldquo;Merge Selected&rdquo;.
+            </p>
+          )}
+
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
             {filteredTopics.map((topic) => (
-              <TopicCard key={topic.slug} topic={topic} />
+              <TopicCard
+                key={topic.slug}
+                topic={topic}
+                selectable={merging}
+                selected={selected.has(topic.slug)}
+                onToggle={() => toggleSelection(topic.slug)}
+              />
             ))}
           </div>
           {filteredTopics.length === 0 && topicSearch && (
@@ -115,6 +171,27 @@ export default function TopicsPage() {
           )}
         </section>
       )}
+
+      {merging && selected.size >= 2 && (
+        <div className="fixed bottom-0 left-60 right-0 border-t bg-background p-4 flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {selected.size} topics selected
+          </p>
+          <Button onClick={() => setMergeDialogOpen(true)}>
+            Merge Selected
+          </Button>
+        </div>
+      )}
+
+      <MergeDialog
+        open={mergeDialogOpen}
+        onOpenChange={setMergeDialogOpen}
+        topics={selectedTopics}
+        onMerged={() => {
+          exitMergeMode();
+          mutateTopics();
+        }}
+      />
     </div>
   );
 }

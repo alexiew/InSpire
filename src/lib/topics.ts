@@ -90,6 +90,36 @@ export function updateTopicSynthesis(
   return getTopic(slug)!;
 }
 
+export function mergeTopics(sourceSlugs: string[], targetName: string): Topic {
+  if (sourceSlugs.length < 2) {
+    throw new Error("At least 2 topics are required to merge");
+  }
+
+  const db = getDb();
+  const targetSlug = slugify(targetName);
+
+  const doMerge = db.transaction(() => {
+    // Create the target topic if it doesn't already exist
+    db.prepare("INSERT OR IGNORE INTO topics (slug, name) VALUES (?, ?)").run(targetSlug, targetName);
+
+    for (const sourceSlug of sourceSlugs) {
+      if (sourceSlug === targetSlug) continue;
+
+      // Move content associations to the target (ignore duplicates)
+      db.prepare(
+        `INSERT OR IGNORE INTO content_topics (content_id, topic_slug)
+         SELECT content_id, ? FROM content_topics WHERE topic_slug = ?`
+      ).run(targetSlug, sourceSlug);
+
+      // Delete the source topic (CASCADE removes its content_topics rows)
+      db.prepare("DELETE FROM topics WHERE slug = ?").run(sourceSlug);
+    }
+  });
+
+  doMerge();
+  return getTopic(targetSlug)!;
+}
+
 export function rebuildTopicIndex(): void {
   // No-op: the content_topics join table maintains the index at write time.
   // Kept for backward compatibility with callers.
