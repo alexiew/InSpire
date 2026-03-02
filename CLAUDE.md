@@ -12,18 +12,19 @@ npm run dev
 ## Tech Stack
 
 - Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, SWR
-- File-based JSON storage (`data/content.json`, `data/topics.json`)
+- SQLite storage via better-sqlite3 (`data/inspire.db`)
 - YouTube transcript extraction via `summarize` CLI (`@steipete/summarize`)
 - AI extraction and synthesis via `claude --print` CLI (uses Max plan, no API costs)
 - Vitest for testing
 
 ## Architecture
 
+- **Database** (`src/lib/db.ts`): SQLite connection management, schema init, `closeDb()` for test isolation
 - **ContentItem** (`src/lib/content.ts`): Core data model with summary, topics[], claims[], people[]
 - **Extraction** (`src/lib/extract.ts`): Claude produces markdown summary + JSON metadata block
-- **Topics** (`src/lib/topics.ts`): Index derived from content items, rebuilt on content changes
+- **Topics** (`src/lib/topics.ts`): Topic CRUD with JOIN queries; content_topics join table maintains index at write time
 - **Synthesis** (`src/lib/synthesize.ts`): Cross-content analysis per topic (agreements, contradictions, unique insights)
-- **Processing pipeline** (`src/lib/process-content.ts`): fetchMetadata → fetchTranscript → extract → save → rebuildTopicIndex
+- **Processing pipeline** (`src/lib/process-content.ts`): fetchMetadata → fetchTranscript → extract → save
 
 ## Key Routes
 
@@ -40,4 +41,4 @@ npm test           # run once
 npm run test:watch # watch mode
 ```
 
-Tests use `INSPIRE_DATA_DIR` env var for file isolation.
+Tests use `INSPIRE_DATA_DIR` env var + `closeDb()` for SQLite isolation.
