@@ -87,12 +87,30 @@ function rowToContentItem(row: ContentRow): ContentItem {
 
 function syncContentTopics(id: string, topics: string[]): void {
   const db = getDb();
+
+  // Remember which topics were previously associated
+  const previousSlugs = (
+    db.prepare("SELECT topic_slug FROM content_topics WHERE content_id = ?").all(id) as { topic_slug: string }[]
+  ).map((r) => r.topic_slug);
+
   db.prepare("DELETE FROM content_topics WHERE content_id = ?").run(id);
 
+  const newSlugs = new Set<string>();
   for (const topicName of topics) {
     const slug = slugify(topicName);
+    newSlugs.add(slug);
     db.prepare("INSERT OR IGNORE INTO topics (slug, name) VALUES (?, ?)").run(slug, topicName);
     db.prepare("INSERT OR IGNORE INTO content_topics (content_id, topic_slug) VALUES (?, ?)").run(id, slug);
+  }
+
+  // Clean up topics that were removed from this content and have no other associations
+  const removed = previousSlugs.filter((s) => !newSlugs.has(s));
+  for (const slug of removed) {
+    db.prepare(
+      `DELETE FROM topics WHERE slug = ? AND slug NOT IN (
+         SELECT topic_slug FROM content_topics
+       )`
+    ).run(slug);
   }
 }
 

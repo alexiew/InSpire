@@ -104,6 +104,65 @@ describe("updateContent", () => {
   });
 });
 
+describe("orphan topic cleanup", () => {
+  it("removes topics with no remaining content when topics are edited", async () => {
+    const content = await loadModule();
+    const topics = await import("@/lib/topics");
+
+    const c = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c.id, {
+      topics: ["longevity", "vitamin D", "sleep"],
+      status: "ready",
+    });
+
+    // All three topics should exist
+    expect(topics.getTopic("longevity")).toBeDefined();
+    expect(topics.getTopic("vitamin-d")).toBeDefined();
+    expect(topics.getTopic("sleep")).toBeDefined();
+
+    // Remove "vitamin D" and "sleep" during review
+    content.updateContent(c.id, { topics: ["longevity"] });
+
+    // Orphaned topics should be cleaned up
+    expect(topics.getTopic("longevity")).toBeDefined();
+    expect(topics.getTopic("vitamin-d")).toBeUndefined();
+    expect(topics.getTopic("sleep")).toBeUndefined();
+  });
+
+  it("preserves standalone topics created without content", async () => {
+    const content = await loadModule();
+    const topics = await import("@/lib/topics");
+
+    // Create a standalone topic
+    topics.createTopic("my research area");
+
+    // Process unrelated content
+    const c = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c.id, { topics: ["longevity"], status: "ready" });
+    content.updateContent(c.id, { topics: ["longevity"] });
+
+    // Standalone topic should survive
+    expect(topics.getTopic("my-research-area")).toBeDefined();
+  });
+
+  it("keeps topics that still have other content associated", async () => {
+    const content = await loadModule();
+    const topics = await import("@/lib/topics");
+
+    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c1.id, { topics: ["longevity", "sleep"], status: "accepted" });
+
+    const c2 = content.createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    content.updateContent(c2.id, { topics: ["longevity", "vitamin D"], status: "ready" });
+
+    // Remove "longevity" from c2 — but c1 still has it
+    content.updateContent(c2.id, { topics: ["vitamin D"] });
+
+    expect(topics.getTopic("longevity")).toBeDefined();
+    expect(topics.getTopic("vitamin-d")).toBeDefined();
+  });
+});
+
 describe("deleteContent", () => {
   it("deletes an item and returns true", async () => {
     const { createContent, deleteContent, listContent } = await loadModule();
