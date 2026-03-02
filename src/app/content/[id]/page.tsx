@@ -107,17 +107,19 @@ export default function ContentDetailPage({
         onUpdated={() => mutate()}
       />
 
-      {item.error && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
-          <p className="text-sm text-destructive">{item.error}</p>
-        </div>
-      )}
-
-      {item.summary && (
+      {item.people.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-lg font-semibold">Summary</h2>
-          <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-            {item.summary}
+          <h2 className="text-lg font-semibold">People</h2>
+          <div className="flex flex-wrap gap-2">
+            {item.people.map((person) => (
+              <Link
+                key={person}
+                href={`/people/${slugify(person)}`}
+                className="text-sm bg-muted px-2 py-1 rounded hover:bg-muted/80 transition-colors"
+              >
+                {person}
+              </Link>
+            ))}
           </div>
         </div>
       )}
@@ -133,19 +135,17 @@ export default function ContentDetailPage({
         </div>
       )}
 
-      {item.people.length > 0 && (
+      {item.error && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
+          <p className="text-sm text-destructive">{item.error}</p>
+        </div>
+      )}
+
+      {item.summary && (
         <div className="space-y-2">
-          <h2 className="text-lg font-semibold">People</h2>
-          <div className="flex flex-wrap gap-2">
-            {item.people.map((person) => (
-              <Link
-                key={person}
-                href={`/people/${slugify(person)}`}
-                className="text-sm bg-muted px-2 py-1 rounded hover:bg-muted/80 transition-colors"
-              >
-                {person}
-              </Link>
-            ))}
+          <h2 className="text-lg font-semibold">Summary</h2>
+          <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+            {item.summary}
           </div>
         </div>
       )}
