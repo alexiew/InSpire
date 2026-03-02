@@ -92,7 +92,7 @@ export default function ContentDetailPage({
         <div className="flex gap-3">
           <Button onClick={() => handleStatusChange("accepted")}>
             <Check className="h-4 w-4 mr-1" />
-            Accept into Knowledge Base
+            Accept
           </Button>
           <Button variant="outline" onClick={() => handleStatusChange("discarded")}>
             <X className="h-4 w-4 mr-1" />
