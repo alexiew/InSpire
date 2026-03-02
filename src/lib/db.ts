@@ -101,6 +101,14 @@ function initSchema(db: Database.Database): void {
       synthesis TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS journal_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      content_id TEXT REFERENCES content(id) ON DELETE SET NULL,
+      text TEXT NOT NULL,
+      note TEXT,
+      created_at TEXT NOT NULL
+    );
   `);
 
   // FTS5 virtual table — CREATE VIRTUAL TABLE doesn't support IF NOT EXISTS

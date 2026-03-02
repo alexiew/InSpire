@@ -9,6 +9,7 @@ import Link from "next/link";
 import { ArrowLeft, Check, ExternalLink, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/content/status-badge";
+import { SelectionJournal } from "@/components/content/selection-journal";
 import { TopicEditor } from "@/components/content/topic-editor";
 import { TranscriptSection } from "@/components/content/transcript-section";
 import { useContentItem } from "@/hooks/use-content";
@@ -124,35 +125,37 @@ export default function ContentDetailPage({
         </div>
       )}
 
-      {item.claims.length > 0 && (
-        <div className="space-y-2">
-          <h2 className="text-lg font-semibold">Key Claims</h2>
-          <ul className="list-disc list-inside space-y-1 text-sm">
-            {item.claims.map((claim, i) => (
-              <li key={i}>{claim}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {item.error && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
-          <p className="text-sm text-destructive">{item.error}</p>
-        </div>
-      )}
-
-      {item.summary && (
-        <div className="space-y-2">
-          <h2 className="text-lg font-semibold">Summary</h2>
-          <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-            {item.summary}
+      <SelectionJournal contentId={id}>
+        {item.claims.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold">Key Claims</h2>
+            <ul className="list-disc list-inside space-y-1 text-sm">
+              {item.claims.map((claim, i) => (
+                <li key={i}>{claim}</li>
+              ))}
+            </ul>
           </div>
-        </div>
-      )}
+        )}
 
-      {item.transcript && (
-        <TranscriptSection transcript={item.transcript} />
-      )}
+        {item.error && (
+          <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
+            <p className="text-sm text-destructive">{item.error}</p>
+          </div>
+        )}
+
+        {item.summary && (
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold">Summary</h2>
+            <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+              {item.summary}
+            </div>
+          </div>
+        )}
+
+        {item.transcript && (
+          <TranscriptSection transcript={item.transcript} />
+        )}
+      </SelectionJournal>
 
       {item.status === "processing" && (
         <p className="text-sm text-muted-foreground text-center animate-pulse">
