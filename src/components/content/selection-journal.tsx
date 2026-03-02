@@ -1,10 +1,10 @@
-// ABOUTME: Floating "Add to Journal" button that appears on text selection.
-// ABOUTME: Captures selected text and saves it as a journal entry linked to the source content.
+// ABOUTME: Floating toolbar that appears on text selection.
+// ABOUTME: Offers "Add to Journal" to save highlights and "Lookup" to search the term on Google.
 
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { BookmarkPlus, Check } from "lucide-react";
+import { BookmarkPlus, Check, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SelectionJournalProps {
@@ -93,25 +93,42 @@ export function SelectionJournal({ contentId, children }: SelectionJournalProps)
             transform: "translateX(-50%)",
           }}
         >
-          <Button
-            size="sm"
-            variant={saved ? "outline" : "default"}
-            className="shadow-md text-xs h-7 gap-1"
-            onClick={handleSave}
-            disabled={saved}
-          >
-            {saved ? (
-              <>
-                <Check className="h-3 w-3" />
-                Saved
-              </>
-            ) : (
-              <>
-                <BookmarkPlus className="h-3 w-3" />
-                Add to Journal
-              </>
-            )}
-          </Button>
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant={saved ? "outline" : "default"}
+              className="shadow-md text-xs h-7 gap-1"
+              onClick={handleSave}
+              disabled={saved}
+            >
+              {saved ? (
+                <>
+                  <Check className="h-3 w-3" />
+                  Saved
+                </>
+              ) : (
+                <>
+                  <BookmarkPlus className="h-3 w-3" />
+                  Journal
+                </>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shadow-md text-xs h-7 gap-1"
+              asChild
+            >
+              <a
+                href={`https://www.google.com/search?q=${encodeURIComponent(selectedText)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Search className="h-3 w-3" />
+                Lookup
+              </a>
+            </Button>
+          </div>
         </div>
       )}
     </div>
