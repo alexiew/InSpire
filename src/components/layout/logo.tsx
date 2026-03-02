@@ -8,9 +8,10 @@ export function Logo() {
         <RubiksCube className="h-7 w-7 text-foreground" />
         <span className="text-lg font-semibold">InSpire</span>
       </div>
-      <span className="text-[10px] text-muted-foreground leading-tight pl-[38px]">
-        Simple solutions to impossible problems
-      </span>
+      <div className="text-[10px] text-muted-foreground leading-tight pl-[38px]">
+        <div>Simple solutions to</div>
+        <div>impossible problems</div>
+      </div>
     </div>
   );
 }
