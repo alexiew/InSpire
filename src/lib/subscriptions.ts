@@ -47,16 +47,16 @@ export function listSubscriptions(): Subscription[] {
   return rows.map(rowToSubscription);
 }
 
-export function createSubscription(sourceType: string, sourceIdentifier: string, name: string): Subscription {
+export function createSubscription(sourceType: string, sourceIdentifier: string, name: string, extractionHints?: string): Subscription {
   const db = getDb();
   const now = new Date().toISOString();
 
   const result = db
     .prepare(
-      `INSERT INTO subscriptions (source_type, source_identifier, name, subscribed_at)
-       VALUES (?, ?, ?, ?)`
+      `INSERT INTO subscriptions (source_type, source_identifier, name, extraction_hints, subscribed_at)
+       VALUES (?, ?, ?, ?, ?)`
     )
-    .run(sourceType, sourceIdentifier, name, now);
+    .run(sourceType, sourceIdentifier, name, extractionHints || "", now);
 
   return rowToSubscription(
     db.prepare("SELECT * FROM subscriptions WHERE id = ?").get(result.lastInsertRowid) as SubscriptionRow

@@ -14,20 +14,22 @@ export function GET() {
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { url } = body;
+  const { url, extractionHints } = body;
 
   if (!url || typeof url !== "string") {
     return NextResponse.json({ error: "url is required" }, { status: 400 });
   }
 
+  const hints = typeof extractionHints === "string" ? extractionHints.trim() : undefined;
+
   try {
     let sub;
     if (isYouTubeUrl(url)) {
       const { channelId, name } = await resolveChannelId(url);
-      sub = createSubscription("youtube", channelId, name);
+      sub = createSubscription("youtube", channelId, name, hints);
     } else {
       const feed = await fetchPodcastFeed(url);
-      sub = createSubscription("podcast", url, feed.title);
+      sub = createSubscription("podcast", url, feed.title, hints);
     }
 
     // Ingest recent content in the background

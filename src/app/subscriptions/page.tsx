@@ -4,7 +4,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Trash2, RefreshCw, Pencil, Check } from "lucide-react";
+import { Loader2, Trash2, RefreshCw, Pencil, Check, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -94,6 +94,8 @@ function SubscriptionCard({
 export default function SubscriptionsPage() {
   const { data: subscriptions, mutate } = useSubscriptions();
   const [url, setUrl] = useState("");
+  const [subHints, setSubHints] = useState("");
+  const [showSubHints, setShowSubHints] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [checking, setChecking] = useState(false);
   const [maxItems, setMaxItems] = useState("15");
@@ -110,11 +112,16 @@ export default function SubscriptionsPage() {
     const res = await fetch("/api/subscriptions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: url.trim() }),
+      body: JSON.stringify({
+        url: url.trim(),
+        ...(subHints.trim() ? { extractionHints: subHints.trim() } : {}),
+      }),
     });
 
     if (res.ok) {
       setUrl("");
+      setSubHints("");
+      setShowSubHints(false);
       mutate();
     } else {
       const data = await res.json();
@@ -172,18 +179,38 @@ export default function SubscriptionsPage() {
 
   return (
     <div className="mx-auto max-w-4xl p-6 space-y-8">
-      <form onSubmit={handleSubscribe} className="flex gap-2">
-        <Input
-          placeholder="YouTube channel or podcast RSS feed URL"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          className="flex-1"
-          disabled={subscribing}
-        />
-        <Button type="submit" disabled={!url.trim() || subscribing}>
-          {subscribing && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-          Subscribe
-        </Button>
+      <form onSubmit={handleSubscribe} className="space-y-2">
+        <div className="flex gap-2">
+          <Input
+            placeholder="YouTube channel or podcast RSS feed URL"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            className="flex-1"
+            disabled={subscribing}
+          />
+          <Button
+            type="button"
+            variant={showSubHints ? "secondary" : "ghost"}
+            size="icon"
+            onClick={() => setShowSubHints(!showSubHints)}
+            title="Extraction hints"
+          >
+            <Settings2 className="h-4 w-4" />
+          </Button>
+          <Button type="submit" disabled={!url.trim() || subscribing}>
+            {subscribing && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+            Subscribe
+          </Button>
+        </div>
+        {showSubHints && (
+          <Textarea
+            placeholder="Extraction hints for this channel (e.g., 'Include step-by-step instructions and tool configurations')"
+            value={subHints}
+            onChange={(e) => setSubHints(e.target.value)}
+            rows={2}
+            className="text-sm"
+          />
+        )}
       </form>
 
       {error && (
