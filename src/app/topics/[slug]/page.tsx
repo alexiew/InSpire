@@ -5,7 +5,6 @@
 
 import { use } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UrlForm } from "@/components/content/url-form";
@@ -42,12 +41,10 @@ export default function TopicDetailPage({
     <div className="mx-auto max-w-4xl p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-1 h-4 w-4" />
-              Back
-            </Button>
-          </Link>
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Back
+          </Button>
           <h1 className="text-2xl font-bold">{topic.name}</h1>
           <span className="text-muted-foreground">
             {topic.contentIds.length}{" "}

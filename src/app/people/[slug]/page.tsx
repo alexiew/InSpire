@@ -4,7 +4,7 @@
 "use client";
 
 import { use } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ContentCard } from "@/components/content/content-card";
@@ -16,6 +16,7 @@ export default function PersonDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
+  const router = useRouter();
   const { data: person } = usePerson(slug);
 
   if (!person) {
@@ -29,12 +30,10 @@ export default function PersonDetailPage({
   return (
     <div className="mx-auto max-w-4xl p-6 space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Back
-          </Button>
-        </Link>
+        <Button variant="ghost" size="sm" onClick={() => router.back()}>
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Back
+        </Button>
         <h1 className="text-2xl font-bold">{person.name}</h1>
         <span className="text-muted-foreground">
           {person.contentIds.length}{" "}
