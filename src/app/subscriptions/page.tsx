@@ -96,6 +96,7 @@ export default function SubscriptionsPage() {
   const [url, setUrl] = useState("");
   const [subscribing, setSubscribing] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [maxItems, setMaxItems] = useState("15");
   const [checkResult, setCheckResult] = useState("");
   const [error, setError] = useState("");
 
@@ -140,7 +141,12 @@ export default function SubscriptionsPage() {
     setChecking(true);
     setCheckResult("");
     try {
-      const res = await fetch("/api/subscriptions/check", { method: "POST" });
+      const count = parseInt(maxItems, 10);
+      const res = await fetch("/api/subscriptions/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(count > 0 ? { maxItems: count } : {}),
+      });
       const data = await res.json();
       if (data.ingested > 0) {
         setCheckResult(`Found ${data.ingested} new item${data.ingested === 1 ? "" : "s"}`);
@@ -189,6 +195,17 @@ export default function SubscriptionsPage() {
           {checkResult && (
             <p className="text-sm text-muted-foreground">{checkResult}</p>
           )}
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-muted-foreground">Last</span>
+            <Input
+              type="number"
+              min={1}
+              value={maxItems}
+              onChange={(e) => setMaxItems(e.target.value)}
+              className="w-16 h-8 text-sm text-center"
+            />
+            <span className="text-sm text-muted-foreground">videos</span>
+          </div>
           <Button
             variant="outline"
             size="sm"

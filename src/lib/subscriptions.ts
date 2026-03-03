@@ -97,9 +97,9 @@ export function contentExists(videoId: string): boolean {
   return !!row;
 }
 
-const MAX_EPISODES_PER_CHECK = 15;
+const DEFAULT_MAX_ITEMS = 15;
 
-export async function checkSubscription(id: number): Promise<number> {
+export async function checkSubscription(id: number, maxItems?: number): Promise<number> {
   const db = getDb();
   const row = db
     .prepare("SELECT * FROM subscriptions WHERE id = ?")
@@ -107,16 +107,17 @@ export async function checkSubscription(id: number): Promise<number> {
 
   if (!row) return 0;
 
+  const limit = maxItems ?? DEFAULT_MAX_ITEMS;
   const ingested = row.source_type === "podcast"
-    ? await checkPodcastSubscription(row)
-    : await checkYouTubeSubscription(row);
+    ? await checkPodcastSubscription(row, limit)
+    : await checkYouTubeSubscription(row, limit);
 
   markChecked(id);
   return ingested;
 }
 
-async function checkYouTubeSubscription(row: SubscriptionRow): Promise<number> {
-  const videos = await fetchChannelVideos(row.source_identifier);
+async function checkYouTubeSubscription(row: SubscriptionRow, maxItems: number): Promise<number> {
+  const videos = await fetchChannelVideos(row.source_identifier, maxItems);
   let ingested = 0;
 
   for (const video of videos) {
@@ -134,11 +135,11 @@ async function checkYouTubeSubscription(row: SubscriptionRow): Promise<number> {
   return ingested;
 }
 
-async function checkPodcastSubscription(row: SubscriptionRow): Promise<number> {
+async function checkPodcastSubscription(row: SubscriptionRow, maxItems: number): Promise<number> {
   const feed = await fetchPodcastFeed(row.source_identifier);
   let ingested = 0;
 
-  for (const episode of feed.episodes.slice(0, MAX_EPISODES_PER_CHECK)) {
+  for (const episode of feed.episodes.slice(0, maxItems)) {
     if (contentExists(episode.guid)) continue;
 
     const item = createContent(episode.enclosureUrl, episode.guid, "podcast");

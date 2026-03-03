@@ -112,12 +112,42 @@ export async function resolveChannelId(url: string): Promise<{ channelId: string
   return { channelId, name };
 }
 
-export async function fetchChannelVideos(channelId: string): Promise<ChannelVideo[]> {
+export async function fetchChannelVideos(channelId: string, maxItems?: number): Promise<ChannelVideo[]> {
+  // RSS feed caps at 15 videos; use yt-dlp for larger requests
+  if (maxItems && maxItems > 15) {
+    return fetchChannelVideosViaDlp(channelId, maxItems);
+  }
   const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
   const res = await fetch(feedUrl);
   if (!res.ok) throw new Error(`Failed to fetch channel feed: ${res.status}`);
   const xml = await res.text();
   return parseChannelFeed(xml);
+}
+
+function fetchChannelVideosViaDlp(channelId: string, maxItems: number): Promise<ChannelVideo[]> {
+  const channelUrl = `https://www.youtube.com/channel/${channelId}/videos`;
+  return new Promise((resolve, reject) => {
+    execFile(
+      "yt-dlp",
+      ["--flat-playlist", "--print", "%(id)s\t%(title)s", "--playlist-end", String(maxItems), channelUrl],
+      { maxBuffer: 10 * 1024 * 1024, timeout: 60000 },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(stderr || error.message));
+          return;
+        }
+        const videos: ChannelVideo[] = [];
+        for (const line of stdout.trim().split("\n")) {
+          if (!line) continue;
+          const [videoId, ...titleParts] = line.split("\t");
+          if (videoId) {
+            videos.push({ videoId, title: titleParts.join("\t") || videoId });
+          }
+        }
+        resolve(videos);
+      }
+    );
+  });
 }
 
 export function fetchTranscript(videoId: string): Promise<string> {
