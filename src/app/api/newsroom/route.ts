@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import {
   computeTopicVelocity,
+  computePeopleVelocity,
   generateBriefing,
   listBriefings,
 } from "@/lib/briefing";
@@ -12,8 +13,9 @@ export async function GET() {
   const briefings = listBriefings();
   const latest = briefings[0] ?? null;
   const velocities = computeTopicVelocity();
+  const peopleVelocities = computePeopleVelocity();
 
-  return NextResponse.json({ briefing: latest, velocities, history: briefings });
+  return NextResponse.json({ briefing: latest, velocities, peopleVelocities, history: briefings });
 }
 
 export async function POST() {

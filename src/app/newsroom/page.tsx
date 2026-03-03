@@ -1,5 +1,5 @@
-// ABOUTME: Newsroom dashboard showing intelligence briefings with topic velocity.
-// ABOUTME: Displays tiered analysis (Conservative/Bold/Moonshot) and topic direction indicators.
+// ABOUTME: Newsroom dashboard showing intelligence briefings with topic and people velocity.
+// ABOUTME: Displays tiered analysis (Conservative/Bold/Moonshot) and baseline-deviation indicators.
 
 "use client";
 
@@ -10,11 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SelectionJournal } from "@/components/content/selection-journal";
 import { useNewsroom } from "@/hooks/use-newsroom";
-import type { Briefing, TopicVelocity } from "@/lib/briefing";
+import type { Briefing, Velocity } from "@/lib/briefing";
 
 const MAX_VELOCITY_CARDS = 7;
 
-function selectDisplayTopics(velocities: TopicVelocity[]): TopicVelocity[] {
+function selectDisplayVelocities(velocities: Velocity[]): Velocity[] {
   const rising = velocities
     .filter((v) => v.velocity > 1.5)
     .sort((a, b) => b.velocity - a.velocity);
@@ -23,7 +23,7 @@ function selectDisplayTopics(velocities: TopicVelocity[]): TopicVelocity[] {
     .filter((v) => v.velocity < 0.5)
     .sort((a, b) => a.velocity - b.velocity);
 
-  const result: TopicVelocity[] = [];
+  const result: Velocity[] = [];
   const risingSlots = Math.min(rising.length, Math.ceil(MAX_VELOCITY_CARDS / 2));
   const coolingSlots = Math.min(cooling.length, MAX_VELOCITY_CARDS - risingSlots);
   const extraRising = Math.min(rising.length - risingSlots, MAX_VELOCITY_CARDS - risingSlots - coolingSlots);
@@ -33,34 +33,34 @@ function selectDisplayTopics(velocities: TopicVelocity[]): TopicVelocity[] {
   return result;
 }
 
-function VelocityCard({ topic }: { topic: TopicVelocity }) {
-  const isRising = topic.velocity > 1.5;
-  const isCooling = topic.velocity < 0.5;
+function VelocityCard({ item, href }: { item: Velocity; href: string }) {
+  const isRising = item.velocity > 1.5;
+  const isCooling = item.velocity < 0.5;
 
   let bgClass = "bg-muted/30";
   let textClass = "text-muted-foreground";
-  let indicator = `${topic.velocity.toFixed(1)}x`;
+  let indicator = `${item.velocity.toFixed(1)}x`;
 
   if (isRising) {
     bgClass = "bg-green-500/10 border-green-500/30";
     textClass = "text-green-600 dark:text-green-400";
-    indicator = `${topic.velocity.toFixed(1)}x ▲`;
+    indicator = `${item.velocity.toFixed(1)}x ▲`;
   } else if (isCooling) {
     bgClass = "bg-red-500/10 border-red-500/30";
     textClass = "text-red-600 dark:text-red-400";
-    indicator = `${topic.velocity.toFixed(1)}x ▼`;
+    indicator = `${item.velocity.toFixed(1)}x ▼`;
   }
 
   return (
-    <Link href={`/topics/${topic.slug}`}>
+    <Link href={href}>
       <Card
         className={`flex flex-col items-center justify-center p-3 min-w-[100px] text-center transition-colors hover:border-primary/50 ${bgClass}`}
       >
-        <span className="text-xs font-medium truncate w-full">{topic.name}</span>
+        <span className="text-xs font-medium truncate w-full">{item.name}</span>
         <span className={`text-sm font-bold ${textClass}`}>
           {indicator}
         </span>
-        <span className="text-xs text-muted-foreground">base {Math.round(topic.baselineRatio * 100)}%</span>
+        <span className="text-xs text-muted-foreground">base {Math.round(item.baselineRatio * 100)}%</span>
       </Card>
     </Link>
   );
@@ -104,10 +104,12 @@ export default function NewsroomPage() {
   const [explaining, setExplaining] = useState(false);
 
   const briefing = data?.briefing ?? null;
-  const velocities = (data?.velocities ?? []) as TopicVelocity[];
+  const velocities = (data?.velocities ?? []) as Velocity[];
+  const peopleVelocities = (data?.peopleVelocities ?? []) as Velocity[];
   const history = data?.history ?? [];
   const pastBriefings = history.slice(1);
-  const displayTopics = selectDisplayTopics(velocities);
+  const displayTopics = selectDisplayVelocities(velocities);
+  const displayPeople = selectDisplayVelocities(peopleVelocities);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -182,10 +184,16 @@ export default function NewsroomPage() {
         </div>
       </div>
 
-      {displayTopics.length > 0 && (
+      {(displayTopics.length > 0 || displayPeople.length > 0) && (
         <div className="flex gap-2 overflow-x-auto pb-2 print:hidden">
-          {displayTopics.map((topic) => (
-            <VelocityCard key={topic.slug} topic={topic} />
+          {displayTopics.map((v) => (
+            <VelocityCard key={`t-${v.slug}`} item={v} href={`/topics/${v.slug}`} />
+          ))}
+          {displayTopics.length > 0 && displayPeople.length > 0 && (
+            <div className="w-px bg-border shrink-0 my-1" />
+          )}
+          {displayPeople.map((v) => (
+            <VelocityCard key={`p-${v.slug}`} item={v} href={`/people/${v.slug}`} />
           ))}
         </div>
       )}

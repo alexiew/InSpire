@@ -1,19 +1,23 @@
 // ABOUTME: Intelligence briefing generation for the Newsroom dashboard.
-// ABOUTME: Computes topic velocity, builds prompts, and stores briefings in SQLite.
+// ABOUTME: Computes topic and people velocity, builds prompts, and stores briefings in SQLite.
 
 import { callClaude } from "./claude";
 import { getDb } from "./db";
 import { getContent, listLibrary } from "./content";
+import { listPeople } from "./people";
 import { listTopics } from "./topics";
 import type { SynthesisInput } from "./synthesize";
 
-export interface TopicVelocity {
+export interface Velocity {
   slug: string;
   name: string;
   contentCount: number;
   baselineRatio: number;
   recentRatio: number;
   velocity: number;
+}
+
+export interface TopicVelocity extends Velocity {
   hasSynthesis: boolean;
 }
 
@@ -45,42 +49,85 @@ function rowToBriefing(row: BriefingRow): Briefing {
 
 const WINDOW_SIZE = 50;
 const MIN_KB_SIZE = 30;
-const MIN_TOPIC_SIZE = 3;
+const MIN_ENTITY_SIZE = 3;
 
-export function computeTopicVelocity(): TopicVelocity[] {
-  const allAccepted = listLibrary();
-  if (allAccepted.length < MIN_KB_SIZE) return [];
+interface VelocityInput {
+  slug: string;
+  name: string;
+  contentIds: string[];
+}
 
-  const windowSize = Math.min(WINDOW_SIZE, allAccepted.length);
-  const recentIds = new Set(allAccepted.slice(0, windowSize).map((c) => c.id));
-  const topics = listTopics();
-
-  return topics
-    .filter((t) => t.contentIds.length >= MIN_TOPIC_SIZE)
-    .map((topic) => {
-      const baselineRatio = topic.contentIds.length / allAccepted.length;
-      const recentCount = topic.contentIds.filter((id) => recentIds.has(id)).length;
+function computeVelocity(
+  entities: VelocityInput[],
+  totalCount: number,
+  recentIds: Set<string>,
+  windowSize: number
+): Velocity[] {
+  return entities
+    .filter((e) => e.contentIds.length >= MIN_ENTITY_SIZE)
+    .map((entity) => {
+      const baselineRatio = entity.contentIds.length / totalCount;
+      const recentCount = entity.contentIds.filter((id) => recentIds.has(id)).length;
       const recentRatio = recentCount / windowSize;
       const velocity = baselineRatio > 0 ? recentRatio / baselineRatio : 0;
 
       return {
-        slug: topic.slug,
-        name: topic.name,
-        contentCount: topic.contentIds.length,
+        slug: entity.slug,
+        name: entity.name,
+        contentCount: entity.contentIds.length,
         baselineRatio,
         recentRatio,
         velocity,
-        hasSynthesis: !!topic.synthesis,
       };
     })
     .sort((a, b) => Math.abs(b.velocity - 1) - Math.abs(a.velocity - 1));
+}
+
+function getVelocityWindow(): { totalCount: number; recentIds: Set<string>; windowSize: number } | null {
+  const allAccepted = listLibrary();
+  if (allAccepted.length < MIN_KB_SIZE) return null;
+
+  const windowSize = Math.min(WINDOW_SIZE, allAccepted.length);
+  const recentIds = new Set(allAccepted.slice(0, windowSize).map((c) => c.id));
+  return { totalCount: allAccepted.length, recentIds, windowSize };
+}
+
+export function computeTopicVelocity(): TopicVelocity[] {
+  const window = getVelocityWindow();
+  if (!window) return [];
+
+  const topics = listTopics();
+  const base = computeVelocity(topics, window.totalCount, window.recentIds, window.windowSize);
+
+  return base.map((v) => {
+    const topic = topics.find((t) => t.slug === v.slug)!;
+    return { ...v, hasSynthesis: !!topic.synthesis };
+  });
+}
+
+export function computePeopleVelocity(): Velocity[] {
+  const window = getVelocityWindow();
+  if (!window) return [];
+
+  const people = listPeople();
+  return computeVelocity(people, window.totalCount, window.recentIds, window.windowSize);
+}
+
+function formatVelocityLines(velocities: Velocity[]): string[] {
+  return velocities.map((v) => {
+    const arrow = v.velocity > 1.5 ? "▲" : v.velocity < 0.5 ? "▼" : "—";
+    const baseline = `${Math.round(v.baselineRatio * 100)}%`;
+    const recent = `${Math.round(v.recentRatio * 100)}%`;
+    return `- ${v.name}: ${v.contentCount} items, baseline ${baseline}, recent ${recent} (${v.velocity.toFixed(1)}x ${arrow})`;
+  });
 }
 
 export function buildBriefingPrompt(
   velocities: TopicVelocity[],
   recentItems: SynthesisInput[],
   topicSyntheses: { name: string; synthesis: string }[],
-  previousBriefing?: string
+  previousBriefing?: string,
+  peopleVelocities?: Velocity[]
 ): string {
   const sections: string[] = [];
 
@@ -89,13 +136,15 @@ export function buildBriefingPrompt(
   );
 
   if (velocities.length > 0) {
-    const velocityLines = velocities.map((v) => {
-      const arrow = v.velocity > 1.5 ? "▲" : v.velocity < 0.5 ? "▼" : "—";
-      const baseline = `${Math.round(v.baselineRatio * 100)}%`;
-      const recent = `${Math.round(v.recentRatio * 100)}%`;
-      return `- ${v.name}: ${v.contentCount} items, baseline ${baseline}, recent ${recent} (${v.velocity.toFixed(1)}x ${arrow})${v.hasSynthesis ? " (synthesized)" : ""}`;
-    });
-    sections.push(`TOPIC VELOCITY:\n${velocityLines.join("\n")}`);
+    const lines = formatVelocityLines(velocities).map((line, i) =>
+      velocities[i].hasSynthesis ? `${line} (synthesized)` : line
+    );
+    sections.push(`TOPIC VELOCITY:\n${lines.join("\n")}`);
+  }
+
+  if (peopleVelocities && peopleVelocities.length > 0) {
+    const lines = formatVelocityLines(peopleVelocities);
+    sections.push(`PEOPLE VELOCITY:\n${lines.join("\n")}`);
   }
 
   if (topicSyntheses.length > 0) {
@@ -202,6 +251,7 @@ export async function generateBriefing(): Promise<Briefing> {
   }
 
   const velocities = computeTopicVelocity();
+  const peopleVelocities = computePeopleVelocity();
 
   // Gather recent content summaries (new items only)
   const recentItems: SynthesisInput[] = newContentIds
@@ -222,7 +272,8 @@ export async function generateBriefing(): Promise<Briefing> {
     velocities,
     recentItems,
     topicSyntheses,
-    previous?.content
+    previous?.content,
+    peopleVelocities
   );
 
   const content = await callClaude(prompt);

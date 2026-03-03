@@ -33,16 +33,17 @@ async function loadModules() {
   return { content, topics, briefing };
 }
 
-// Helper: create N accepted content items tagged with given topics
+// Helper: create N accepted content items with given topics and/or people
 function createItems(
   contentModule: Awaited<ReturnType<typeof loadModules>>["content"],
   count: number,
-  topics: string[]
+  topics: string[],
+  people: string[] = []
 ) {
   const ids: string[] = [];
   for (let i = 0; i < count; i++) {
     const c = contentModule.createContent(`https://youtube.com/watch?v=gen-${Date.now()}-${i}`, `gen-${Date.now()}-${i}`, "youtube");
-    contentModule.updateContent(c.id, { topics, status: "accepted" });
+    contentModule.updateContent(c.id, { topics, people, status: "accepted" });
     ids.push(c.id);
   }
   return ids;
@@ -189,6 +190,73 @@ describe("computeTopicVelocity", () => {
   });
 });
 
+describe("computePeopleVelocity", () => {
+  it("returns empty when knowledge base has fewer than 30 items", async () => {
+    const { content, briefing } = await loadModules();
+
+    createItems(content, 10, ["topic"], ["Dr. Huberman"]);
+
+    const velocities = briefing.computePeopleVelocity();
+    expect(velocities).toEqual([]);
+  });
+
+  it("excludes people with fewer than 3 content items", async () => {
+    const { content, briefing } = await loadModules();
+
+    createItems(content, 28, ["topic"], ["Dr. Huberman"]);
+    createItems(content, 2, ["topic"], ["Rare Guest"]);
+
+    const velocities = briefing.computePeopleVelocity();
+    const slugs = velocities.map((v) => v.slug);
+    expect(slugs).toContain("dr-huberman");
+    expect(slugs).not.toContain("rare-guest");
+  });
+
+  it("computes baseline and recent ratios correctly", async () => {
+    const { content, briefing } = await loadModules();
+
+    // 80 items with "Dr. A", then 20 with "Dr. B" = 100 total
+    // Dr. B: baseline 20/100=20%, recent 20/50=40%, velocity=2.0x
+    createItems(content, 80, ["topic"], ["Dr. A"]);
+    createItems(content, 20, ["topic"], ["Dr. B"]);
+
+    const velocities = briefing.computePeopleVelocity();
+    const drB = velocities.find((v) => v.slug === "dr-b")!;
+
+    expect(drB).toBeDefined();
+    expect(drB.contentCount).toBe(20);
+    expect(drB.baselineRatio).toBeCloseTo(0.2, 2);
+    expect(drB.recentRatio).toBeCloseTo(0.4, 2);
+    expect(drB.velocity).toBeCloseTo(2.0, 1);
+  });
+
+  it("detects over-represented people as rising", async () => {
+    const { content, briefing } = await loadModules();
+
+    createItems(content, 70, ["topic"], ["Background Host"]);
+    createItems(content, 30, ["topic"], ["Hot Guest"]);
+
+    const velocities = briefing.computePeopleVelocity();
+    const hot = velocities.find((v) => v.slug === "hot-guest")!;
+
+    expect(hot.velocity).toBeGreaterThan(1.5);
+  });
+
+  it("sorts by deviation from baseline", async () => {
+    const { content, briefing } = await loadModules();
+
+    createItems(content, 55, ["topic"], ["Background Host"]);
+    createItems(content, 40, ["topic"], ["Hot Guest"]);
+    createItems(content, 5, ["topic"], ["Mild Guest"]);
+
+    const velocities = briefing.computePeopleVelocity();
+
+    const hotIdx = velocities.findIndex((v) => v.slug === "hot-guest");
+    const bgIdx = velocities.findIndex((v) => v.slug === "background-host");
+    expect(hotIdx).toBeLessThan(bgIdx);
+  });
+});
+
 describe("buildBriefingPrompt", () => {
   it("includes topic velocity data", async () => {
     const { briefing } = await loadModules();
@@ -226,6 +294,21 @@ describe("buildBriefingPrompt", () => {
     );
     expect(prompt).toContain("Great Video");
     expect(prompt).toContain("NAD+ declines with age");
+  });
+
+  it("includes people velocity data", async () => {
+    const { briefing } = await loadModules();
+
+    const prompt = briefing.buildBriefingPrompt(
+      [],
+      [],
+      [],
+      undefined,
+      [{ slug: "dr-huberman", name: "Dr. Huberman", contentCount: 20, baselineRatio: 0.10, recentRatio: 0.30, velocity: 3.0 }]
+    );
+    expect(prompt).toContain("PEOPLE VELOCITY");
+    expect(prompt).toContain("Dr. Huberman");
+    expect(prompt).toContain("3.0x");
   });
 
   it("includes previous briefing in incremental mode", async () => {

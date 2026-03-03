@@ -2,13 +2,14 @@
 // ABOUTME: Returns the latest briefing and current topic velocities.
 
 import useSWR from "swr";
-import type { Briefing, TopicVelocity } from "@/lib/briefing";
+import type { Briefing, TopicVelocity, Velocity } from "@/lib/briefing";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export interface NewsroomData {
   briefing: Briefing | null;
   velocities: TopicVelocity[];
+  peopleVelocities: Velocity[];
   history: Briefing[];
 }
 
