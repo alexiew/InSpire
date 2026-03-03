@@ -66,19 +66,6 @@ export function deleteSubscription(id: number): boolean {
   return result.changes > 0;
 }
 
-export function getDueSubscriptions(): Subscription[] {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT * FROM subscriptions
-       WHERE last_checked_at IS NULL
-          OR last_checked_at < datetime('now', '-7 days')
-       ORDER BY last_checked_at ASC`
-    )
-    .all() as SubscriptionRow[];
-  return rows.map(rowToSubscription);
-}
-
 export function markChecked(id: number): void {
   const db = getDb();
   const now = new Date().toISOString();
@@ -145,18 +132,4 @@ async function checkPodcastSubscription(row: SubscriptionRow): Promise<number> {
   }
 
   return ingested;
-}
-
-let lastAutoCheck = 0;
-const AUTO_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
-
-export function maybeCheckSubscriptions(): void {
-  const now = Date.now();
-  if (now - lastAutoCheck < AUTO_CHECK_INTERVAL) return;
-  lastAutoCheck = now;
-
-  const due = getDueSubscriptions();
-  for (const sub of due) {
-    checkSubscription(sub.id).catch(() => {});
-  }
 }

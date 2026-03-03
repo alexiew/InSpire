@@ -1,5 +1,5 @@
 // ABOUTME: Tests for subscription CRUD operations.
-// ABOUTME: Verifies listing, creation, deletion, due-check logic, and podcast support.
+// ABOUTME: Verifies listing, creation, deletion, and content deduplication.
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "fs";
@@ -78,27 +78,6 @@ describe("deleteSubscription", () => {
   it("returns false for nonexistent id", async () => {
     const { deleteSubscription } = await loadModules();
     expect(deleteSubscription(999)).toBe(false);
-  });
-});
-
-describe("getDueSubscriptions", () => {
-  it("returns subscriptions never checked", async () => {
-    const { createSubscription, getDueSubscriptions } = await loadModules();
-    createSubscription("youtube", "UC1234567890abcdefghij", "Test");
-
-    const due = getDueSubscriptions();
-    expect(due).toHaveLength(1);
-  });
-
-  it("excludes recently checked subscriptions", async () => {
-    const { createSubscription, markChecked, getDueSubscriptions } =
-      await loadModules();
-
-    const sub = createSubscription("youtube", "UC1234567890abcdefghij", "Test");
-    markChecked(sub.id);
-
-    const due = getDueSubscriptions();
-    expect(due).toHaveLength(0);
   });
 });
 
