@@ -14,7 +14,7 @@ export function GET() {
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { url, extractionHints } = body;
+  const { url, extractionHints, maxItems } = body;
 
   if (!url || typeof url !== "string") {
     return NextResponse.json({ error: "url is required" }, { status: 400 });
@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Ingest recent content in the background
-    checkSubscription(sub.id).catch(() => {});
+    const limit = typeof maxItems === "number" && maxItems > 0 ? maxItems : undefined;
+    checkSubscription(sub.id, limit).catch(() => {});
 
     return NextResponse.json(sub, { status: 201 });
   } catch (err) {

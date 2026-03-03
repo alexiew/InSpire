@@ -115,6 +115,7 @@ export default function SubscriptionsPage() {
       body: JSON.stringify({
         url: url.trim(),
         ...(subHints.trim() ? { extractionHints: subHints.trim() } : {}),
+        ...(parseInt(maxItems, 10) !== 15 ? { maxItems: parseInt(maxItems, 10) } : {}),
       }),
     });
 
@@ -122,6 +123,7 @@ export default function SubscriptionsPage() {
       setUrl("");
       setSubHints("");
       setShowSubHints(false);
+      setMaxItems("15");
       mutate();
     } else {
       const data = await res.json();
@@ -148,11 +150,8 @@ export default function SubscriptionsPage() {
     setChecking(true);
     setCheckResult("");
     try {
-      const count = parseInt(maxItems, 10);
       const res = await fetch("/api/subscriptions/check", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(count > 0 ? { maxItems: count } : {}),
       });
       const data = await res.json();
       if (data.ingested > 0) {
@@ -197,6 +196,16 @@ export default function SubscriptionsPage() {
           >
             <Settings2 className="h-4 w-4" />
           </Button>
+          <div className="flex items-center gap-1">
+            <Input
+              type="number"
+              min={1}
+              value={maxItems}
+              onChange={(e) => setMaxItems(e.target.value)}
+              className="w-16 h-9 text-sm text-center"
+              title="Number of videos to import"
+            />
+          </div>
           <Button type="submit" disabled={!url.trim() || subscribing}>
             {subscribing && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
             Subscribe
@@ -222,17 +231,6 @@ export default function SubscriptionsPage() {
           {checkResult && (
             <p className="text-sm text-muted-foreground">{checkResult}</p>
           )}
-          <div className="flex items-center gap-1">
-            <span className="text-sm text-muted-foreground">Last</span>
-            <Input
-              type="number"
-              min={1}
-              value={maxItems}
-              onChange={(e) => setMaxItems(e.target.value)}
-              className="w-16 h-8 text-sm text-center"
-            />
-            <span className="text-sm text-muted-foreground">videos</span>
-          </div>
           <Button
             variant="outline"
             size="sm"

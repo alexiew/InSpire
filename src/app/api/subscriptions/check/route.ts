@@ -1,23 +1,13 @@
 // ABOUTME: API route for manually triggering subscription checks.
-// ABOUTME: Checks all subscriptions and returns new items count. Accepts optional maxItems.
+// ABOUTME: Checks all subscriptions for new content and returns ingested count.
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { listSubscriptions, checkSubscription } from "@/lib/subscriptions";
 
-export async function POST(request: NextRequest) {
-  let maxItems: number | undefined;
-  try {
-    const body = await request.json();
-    if (typeof body.maxItems === "number" && body.maxItems > 0) {
-      maxItems = body.maxItems;
-    }
-  } catch {
-    // No body or invalid JSON — use defaults
-  }
-
+export async function POST() {
   const subs = listSubscriptions();
   const results = await Promise.allSettled(
-    subs.map((sub) => checkSubscription(sub.id, maxItems))
+    subs.map((sub) => checkSubscription(sub.id))
   );
 
   const totalIngested = results.reduce((sum, r) => {
