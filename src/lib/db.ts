@@ -155,6 +155,14 @@ function initSchema(db: Database.Database): void {
       note TEXT,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS briefings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      content TEXT NOT NULL,
+      topic_snapshot TEXT NOT NULL DEFAULT '[]',
+      content_ids TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL
+    );
   `);
 
   // FTS5 virtual table — CREATE VIRTUAL TABLE doesn't support IF NOT EXISTS
