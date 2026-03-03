@@ -76,7 +76,7 @@ export default function JournalPage() {
               key={entry.id}
               className="rounded-md border p-4 space-y-2"
             >
-              <blockquote className="text-sm border-l-2 border-primary pl-3 italic">
+              <blockquote className="text-sm border-l-2 border-primary pl-3 italic whitespace-pre-wrap">
                 {entry.text}
               </blockquote>
               <div className="flex items-center justify-between">
