@@ -1,8 +1,9 @@
-// ABOUTME: API route for elaborating on selected text from briefings.
-// ABOUTME: Sends selected text to Claude for deeper explanation and context.
+// ABOUTME: API route for explaining selected briefing text using the knowledge base.
+// ABOUTME: Searches for related content and syntheses, then asks Claude to explain grounded in sources.
 
 import { NextRequest, NextResponse } from "next/server";
 import { callClaude } from "@/lib/claude";
+import { searchKnowledgeBase, buildExplainPrompt } from "@/lib/explain";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -14,18 +15,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const prompt = `The user selected the following text from an intelligence briefing and wants a deeper explanation:
-
-"${body.text.trim()}"
-
-Provide a concise but thorough explanation. Cover:
-- What this means and why it matters
-- Key context and background
-- Practical implications or actionable takeaways
-
-Be specific and substantive. Keep it focused — 2-4 short paragraphs max.`;
-
   try {
+    const context = searchKnowledgeBase(body.text);
+    const prompt = buildExplainPrompt(body.text, context);
     const explanation = await callClaude(prompt);
     return NextResponse.json({ explanation });
   } catch (err) {
