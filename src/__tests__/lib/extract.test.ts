@@ -155,4 +155,14 @@ describe("filterAuthor", () => {
     const people = ["Elon Musk", "Joe Rogan"];
     expect(filterAuthor(people, "Lex Fridman")).toEqual(["Elon Musk", "Joe Rogan"]);
   });
+
+  it("filters when person name is contained in author (podcast feed title)", () => {
+    const people = ["Andrew Huberman", "Matt Walker"];
+    expect(filterAuthor(people, "Huberman Lab")).toEqual(["Matt Walker"]);
+  });
+
+  it("filters when author name is contained in person name", () => {
+    const people = ["Dr. Andrew Huberman", "Matt Walker"];
+    expect(filterAuthor(people, "Andrew Huberman")).toEqual(["Matt Walker"]);
+  });
 });

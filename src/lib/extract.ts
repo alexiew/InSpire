@@ -95,7 +95,19 @@ export function parseExtraction(raw: string): ExtractionResult {
 export function filterAuthor(people: string[], author: string): string[] {
   if (!author) return people;
   const authorLower = author.toLowerCase();
-  return people.filter((p) => p.toLowerCase() !== authorLower);
+  return people.filter((p) => {
+    const personLower = p.toLowerCase();
+    // Exact match
+    if (personLower === authorLower) return false;
+    // Person's name appears in author (e.g., "Huberman" in "Huberman Lab")
+    // or author appears in person (e.g., "Andrew Huberman" in "Dr. Andrew Huberman")
+    // Check individual words (2+ chars) from the person's name against the author
+    const personWords = personLower.split(/\s+/).filter((w) => w.length >= 2);
+    const authorWords = authorLower.split(/\s+/).filter((w) => w.length >= 2);
+    const overlap = personWords.filter((w) => authorWords.includes(w));
+    // If any significant name word overlaps, consider it a match
+    return overlap.length === 0;
+  });
 }
 
 export async function extract(
