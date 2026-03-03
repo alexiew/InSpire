@@ -5,12 +5,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2, Zap, X } from "lucide-react";
+import { Loader2, Zap, X, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SelectionJournal } from "@/components/content/selection-journal";
 import { useNewsroom } from "@/hooks/use-newsroom";
-import type { TopicVelocity } from "@/lib/briefing";
+import type { Briefing, TopicVelocity } from "@/lib/briefing";
 
 function VelocityCard({ topic }: { topic: TopicVelocity }) {
   const isHot = topic.newCount > 0;
@@ -32,6 +32,36 @@ function VelocityCard({ topic }: { topic: TopicVelocity }) {
   );
 }
 
+function PastBriefingCard({ briefing, onExplain }: { briefing: Briefing; onExplain: (text: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <Card className="overflow-hidden">
+      <button
+        className="flex w-full items-center gap-3 p-4 text-left hover:bg-muted/50 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
+        <span className="text-sm font-medium">
+          {new Date(briefing.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {briefing.topicSnapshot.length} topics
+        </span>
+      </button>
+      {expanded && (
+        <div className="border-t px-6 py-4">
+          <SelectionJournal showExplain onExplain={onExplain}>
+            <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+              {briefing.content}
+            </div>
+          </SelectionJournal>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function NewsroomPage() {
   const { data, mutate } = useNewsroom();
   const [generating, setGenerating] = useState(false);
@@ -41,6 +71,8 @@ export default function NewsroomPage() {
 
   const briefing = data?.briefing ?? null;
   const velocities = data?.velocities ?? [];
+  const history = data?.history ?? [];
+  const pastBriefings = history.slice(1); // everything except the latest
 
   async function handleGenerate() {
     setGenerating(true);
@@ -181,6 +213,15 @@ export default function NewsroomPage() {
             </Button>
           </div>
         </Card>
+      )}
+
+      {pastBriefings.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground">Past Briefings</h2>
+          {pastBriefings.map((past) => (
+            <PastBriefingCard key={past.id} briefing={past} onExplain={handleExplain} />
+          ))}
+        </div>
       )}
 
       {!briefing && !generating && (

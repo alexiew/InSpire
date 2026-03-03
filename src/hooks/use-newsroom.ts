@@ -9,6 +9,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 export interface NewsroomData {
   briefing: Briefing | null;
   velocities: TopicVelocity[];
+  history: Briefing[];
 }
 
 export function useNewsroom() {
