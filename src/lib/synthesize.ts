@@ -3,7 +3,7 @@
 
 import { callClaude } from "./claude";
 import { getContent } from "./content";
-import { getTopic, updateTopicSynthesis } from "./topics";
+import { getTopic, updateTopicSynthesis, getLatestSynthesisRecord } from "./topics";
 
 export interface SynthesisInput {
   title: string;
@@ -73,6 +73,12 @@ Produce an updated synthesis that integrates the new material. Maintain the same
 Incorporate the new sources naturally. If they reinforce existing points, strengthen them with the new evidence. If they contradict existing points, note the disagreement. Add any new themes or insights they introduce. Be specific and substantive.`;
 }
 
+function contentToSynthesisInput(id: string): SynthesisInput | undefined {
+  const item = getContent(id);
+  if (!item) return undefined;
+  return { title: item.title, author: item.author, summary: item.summary, claims: item.claims };
+}
+
 export async function synthesizeTopic(slug: string): Promise<string> {
   const topic = getTopic(slug);
   if (!topic) {
@@ -83,20 +89,27 @@ export async function synthesizeTopic(slug: string): Promise<string> {
     throw new Error("Need at least 2 content items to synthesize");
   }
 
-  const items: SynthesisInput[] = [];
-  for (const id of topic.contentIds) {
-    const item = getContent(id);
-    if (!item) continue;
-    items.push({
-      title: item.title,
-      author: item.author,
-      summary: item.summary,
-      claims: item.claims,
-    });
+  const currentIds = topic.contentIds;
+  const lastRecord = getLatestSynthesisRecord(slug);
+
+  let prompt: string;
+
+  if (lastRecord) {
+    const previousIds = new Set(lastRecord.contentIds);
+    const newIds = currentIds.filter((id) => !previousIds.has(id));
+
+    if (newIds.length === 0) {
+      throw new Error("Synthesis is up to date — no new content since last generation");
+    }
+
+    const newItems = newIds.map(contentToSynthesisInput).filter((x): x is SynthesisInput => !!x);
+    prompt = buildIncrementalPrompt(topic.name, lastRecord.synthesis, newItems);
+  } else {
+    const items = currentIds.map(contentToSynthesisInput).filter((x): x is SynthesisInput => !!x);
+    prompt = buildSynthesisPrompt(topic.name, items);
   }
 
-  const prompt = buildSynthesisPrompt(topic.name, items);
   const synthesis = await callClaude(prompt);
-  updateTopicSynthesis(slug, synthesis, topic.contentIds);
+  updateTopicSynthesis(slug, synthesis, currentIds);
   return synthesis;
 }
