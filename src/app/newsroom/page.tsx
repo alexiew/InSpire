@@ -10,32 +10,20 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SelectionJournal } from "@/components/content/selection-journal";
 import { useNewsroom } from "@/hooks/use-newsroom";
-import type { Briefing } from "@/lib/briefing";
-
-interface DisplayVelocity {
-  slug: string;
-  name: string;
-  contentCount: number;
-  newCount: number;
-  previousNewCount: number;
-  hasSynthesis: boolean;
-}
+import type { Briefing, TopicVelocity } from "@/lib/briefing";
 
 const MAX_VELOCITY_CARDS = 7;
 
-function selectDisplayTopics(velocities: DisplayVelocity[]): DisplayVelocity[] {
-  // Rising: has new content now
+function selectDisplayTopics(velocities: TopicVelocity[]): TopicVelocity[] {
   const rising = velocities
-    .filter((v) => v.newCount > 0)
-    .sort((a, b) => b.newCount - a.newCount);
+    .filter((v) => v.velocity > 1.5)
+    .sort((a, b) => b.velocity - a.velocity);
 
-  // Cooling: had new content last briefing, but none now
   const cooling = velocities
-    .filter((v) => v.newCount === 0 && v.previousNewCount > 0)
-    .sort((a, b) => b.previousNewCount - a.previousNewCount);
+    .filter((v) => v.velocity < 0.5)
+    .sort((a, b) => a.velocity - b.velocity);
 
-  // Fill up to MAX: rising first, then cooling
-  const result: DisplayVelocity[] = [];
+  const result: TopicVelocity[] = [];
   const risingSlots = Math.min(rising.length, Math.ceil(MAX_VELOCITY_CARDS / 2));
   const coolingSlots = Math.min(cooling.length, MAX_VELOCITY_CARDS - risingSlots);
   const extraRising = Math.min(rising.length - risingSlots, MAX_VELOCITY_CARDS - risingSlots - coolingSlots);
@@ -45,22 +33,22 @@ function selectDisplayTopics(velocities: DisplayVelocity[]): DisplayVelocity[] {
   return result;
 }
 
-function VelocityCard({ topic }: { topic: DisplayVelocity }) {
-  const isRising = topic.newCount > 0;
-  const isCooling = topic.newCount === 0 && topic.previousNewCount > 0;
+function VelocityCard({ topic }: { topic: TopicVelocity }) {
+  const isRising = topic.velocity > 1.5;
+  const isCooling = topic.velocity < 0.5;
 
   let bgClass = "bg-muted/30";
   let textClass = "text-muted-foreground";
-  let indicator = "— ";
+  let indicator = `${topic.velocity.toFixed(1)}x`;
 
   if (isRising) {
     bgClass = "bg-green-500/10 border-green-500/30";
     textClass = "text-green-600 dark:text-green-400";
-    indicator = `+${topic.newCount} ▲`;
+    indicator = `${topic.velocity.toFixed(1)}x ▲`;
   } else if (isCooling) {
     bgClass = "bg-red-500/10 border-red-500/30";
     textClass = "text-red-600 dark:text-red-400";
-    indicator = `▼ was +${topic.previousNewCount}`;
+    indicator = `${topic.velocity.toFixed(1)}x ▼`;
   }
 
   return (
@@ -72,7 +60,7 @@ function VelocityCard({ topic }: { topic: DisplayVelocity }) {
         <span className={`text-sm font-bold ${textClass}`}>
           {indicator}
         </span>
-        <span className="text-xs text-muted-foreground">{topic.contentCount} total</span>
+        <span className="text-xs text-muted-foreground">base {Math.round(topic.baselineRatio * 100)}%</span>
       </Card>
     </Link>
   );
@@ -116,7 +104,7 @@ export default function NewsroomPage() {
   const [explaining, setExplaining] = useState(false);
 
   const briefing = data?.briefing ?? null;
-  const velocities = (data?.velocities ?? []) as DisplayVelocity[];
+  const velocities = (data?.velocities ?? []) as TopicVelocity[];
   const history = data?.history ?? [];
   const pastBriefings = history.slice(1);
   const displayTopics = selectDisplayTopics(velocities);
@@ -166,8 +154,6 @@ export default function NewsroomPage() {
       setExplaining(false);
     }
   }
-
-  const totalNew = velocities.reduce((sum, v) => sum + v.newCount, 0);
 
   return (
     <div className="mx-auto max-w-4xl p-6 space-y-6">
@@ -235,11 +221,8 @@ export default function NewsroomPage() {
               Generated {new Date(briefing.createdAt).toLocaleString()}
             </span>
             <span>
-              {briefing.topicSnapshot.length} topics
+              {briefing.topicSnapshot.length} topics tracked
             </span>
-            {totalNew > 0 && (
-              <span>{totalNew} new items since last briefing</span>
-            )}
           </div>
         </Card>
       )}

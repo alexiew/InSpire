@@ -33,51 +33,159 @@ async function loadModules() {
   return { content, topics, briefing };
 }
 
-describe("getTopicVelocities", () => {
-  it("returns topics sorted by newCount descending", async () => {
+// Helper: create N accepted content items tagged with given topics
+function createItems(
+  contentModule: Awaited<ReturnType<typeof loadModules>>["content"],
+  count: number,
+  topics: string[]
+) {
+  const ids: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const c = contentModule.createContent(`https://youtube.com/watch?v=gen-${Date.now()}-${i}`, `gen-${Date.now()}-${i}`, "youtube");
+    contentModule.updateContent(c.id, { topics, status: "accepted" });
+    ids.push(c.id);
+  }
+  return ids;
+}
+
+describe("computeTopicVelocity", () => {
+  it("returns empty when knowledge base has fewer than 30 items", async () => {
     const { content, briefing } = await loadModules();
 
-    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
-    content.updateContent(c1.id, { topics: ["longevity", "sleep"], status: "accepted" });
+    createItems(content, 10, ["longevity"]);
 
-    const c2 = content.createContent("https://youtube.com/watch?v=b", "b", "youtube");
-    content.updateContent(c2.id, { topics: ["longevity"], status: "accepted" });
-
-    // c1 is "old" (in previousContentIds), c2 is "new"
-    const velocities = briefing.getTopicVelocities([c1.id]);
-
-    expect(velocities[0].slug).toBe("longevity");
-    expect(velocities[0].contentCount).toBe(2);
-    expect(velocities[0].newCount).toBe(1); // c2 is new
-
-    expect(velocities[1].slug).toBe("sleep");
-    expect(velocities[1].contentCount).toBe(1);
-    expect(velocities[1].newCount).toBe(0); // c1 already seen
+    const velocities = briefing.computeTopicVelocity();
+    expect(velocities).toEqual([]);
   });
 
-  it("returns all new when no previous content IDs", async () => {
+  it("excludes topics with fewer than 3 content items", async () => {
     const { content, briefing } = await loadModules();
 
-    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
-    content.updateContent(c1.id, { topics: ["longevity"], status: "accepted" });
+    // 28 items for "longevity" + 2 items for "rare-topic" = 30 total
+    createItems(content, 28, ["longevity"]);
+    createItems(content, 2, ["rare-topic"]);
 
-    const velocities = briefing.getTopicVelocities([]);
-    expect(velocities[0].newCount).toBe(1);
+    const velocities = briefing.computeTopicVelocity();
+    const slugs = velocities.map((v) => v.slug);
+    expect(slugs).toContain("longevity");
+    expect(slugs).not.toContain("rare-topic");
+  });
+
+  it("computes baseline and recent ratios correctly", async () => {
+    const { content, briefing } = await loadModules();
+
+    // Create 20 older items tagged "background" (not in recent window of 50, but will be in KB)
+    // Then 30 recent items: 20 "longevity" + 10 "sleep"
+    // Total: 50 items
+    // But we need all 50 to be in the window since window=50 and total=50
+    // So baseline = recent for this case. Let's make it bigger.
+
+    // 60 items total: first 30 are "background", then 15 "longevity" + 15 "sleep"
+    // Window = last 50 items
+    // Background: 30 total, ~20 in window (the last 20 of the 30)
+    // Actually, order matters — created_at DESC means newest first
+    // Items created first are oldest, last are newest
+
+    // Create in order: 30 background, 15 longevity, 15 sleep
+    // Newest 50 = 10 background + 15 longevity + 15 sleep (wait, that's only 40)
+    // Let me simplify: 40 background items, then 20 longevity items = 60 total
+    // baseline for longevity: 20/60 = 33%
+    // recent window (last 50): 20 longevity + 30 background → longevity recent = 20/50 = 40%
+    // velocity = 40% / 33% = 1.2x
+    // That's not very dramatic. Let me make it clearer.
+
+    // 50 background, then 10 longevity = 60 total
+    // baseline for longevity: 10/60 = 16.7%
+    // window (last 50): 10 longevity + 40 background → longevity recent = 10/50 = 20%
+    // velocity = 20% / 16.7% = 1.2x — still mild
+
+    // Need more contrast: 80 background, then 20 longevity = 100 total
+    // baseline: 20/100 = 20%
+    // window (last 50): 20 longevity + 30 background → longevity recent = 20/50 = 40%
+    // velocity = 40%/20% = 2.0x — rising!
+
+    createItems(content, 80, ["background"]);
+    createItems(content, 20, ["longevity"]);
+
+    const velocities = briefing.computeTopicVelocity();
+    const longevity = velocities.find((v) => v.slug === "longevity")!;
+
+    expect(longevity).toBeDefined();
+    expect(longevity.contentCount).toBe(20);
+    expect(longevity.baselineRatio).toBeCloseTo(0.2, 2);    // 20/100
+    expect(longevity.recentRatio).toBeCloseTo(0.4, 2);      // 20/50
+    expect(longevity.velocity).toBeCloseTo(2.0, 1);          // 0.4/0.2
+  });
+
+  it("detects over-represented topics as rising", async () => {
+    const { content, briefing } = await loadModules();
+
+    // 70 background, then 30 "hot-topic" = 100 total
+    // baseline: 30/100 = 30%, recent: 30/50 = 60%, velocity = 2.0x
+    createItems(content, 70, ["background"]);
+    createItems(content, 30, ["hot-topic"]);
+
+    const velocities = briefing.computeTopicVelocity();
+    const hot = velocities.find((v) => v.slug === "hot-topic")!;
+
+    expect(hot.velocity).toBeGreaterThan(1.5);
+  });
+
+  it("detects under-represented topics as cooling", async () => {
+    const { content, briefing } = await loadModules();
+
+    // 30 "fading-topic" first (old), then 70 "other" (recent) = 100 total
+    // baseline for fading: 30/100 = 30%
+    // window (last 50): all 50 are "other" → fading recent = 0/50 = 0%
+    // velocity = 0/0.3 = 0
+    createItems(content, 30, ["fading-topic"]);
+    createItems(content, 70, ["other"]);
+
+    const velocities = briefing.computeTopicVelocity();
+    const fading = velocities.find((v) => v.slug === "fading-topic")!;
+
+    expect(fading.velocity).toBeLessThan(0.5);
+  });
+
+  it("sorts by deviation from baseline (most deviated first)", async () => {
+    const { content, briefing } = await loadModules();
+
+    // 50 background (old), then 25 "trending" + 25 "also-trending" = 100 total
+    // Both trending topics have same velocity — but let's make them different
+    // 60 background, then 30 "hot" + 10 "warm" = 100
+    // hot: baseline 30/100=30%, recent 30/50=60%, velocity=2.0x, |v-1|=1.0
+    // warm: baseline 10/100=10%, recent 10/50=20%, velocity=2.0x, |v-1|=1.0
+    // Same deviation! Let me adjust.
+    // 60 background, 35 "hot", 5 "mild" = 100
+    // hot: baseline 35%, recent 35/50=70%, v=2.0x
+    // mild: baseline 5%, recent 5/50=10%, v=2.0x — same again
+    // The ratio-based velocity gives same result for proportional over-representation
+    // To differentiate: 55 background, 40 "hot", 5 "mild" = 100
+    // hot: baseline 40%, recent 40/50=80%, v=2.0x
+    // background: baseline 55%, recent 10/50=20%, v=0.36x, |v-1|=0.64
+    // hot |v-1| = 1.0, background |v-1| = 0.64 → hot sorts first
+
+    createItems(content, 55, ["background"]);
+    createItems(content, 40, ["hot"]);
+    createItems(content, 5, ["mild"]);
+
+    const velocities = briefing.computeTopicVelocity();
+
+    // "hot" should be more deviated than "background"
+    const hotIdx = velocities.findIndex((v) => v.slug === "hot");
+    const bgIdx = velocities.findIndex((v) => v.slug === "background");
+    expect(hotIdx).toBeLessThan(bgIdx);
   });
 
   it("includes hasSynthesis flag", async () => {
     const { content, topics, briefing } = await loadModules();
 
-    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
-    content.updateContent(c1.id, { topics: ["longevity"], status: "accepted" });
+    const ids = createItems(content, 30, ["longevity"]);
+    topics.updateTopicSynthesis("longevity", "Some synthesis", ids);
 
-    const c2 = content.createContent("https://youtube.com/watch?v=b", "b", "youtube");
-    content.updateContent(c2.id, { topics: ["longevity"], status: "accepted" });
-
-    topics.updateTopicSynthesis("longevity", "Some synthesis", [c1.id, c2.id]);
-
-    const velocities = briefing.getTopicVelocities([]);
-    expect(velocities[0].hasSynthesis).toBe(true);
+    const velocities = briefing.computeTopicVelocity();
+    const longevity = velocities.find((v) => v.slug === "longevity")!;
+    expect(longevity.hasSynthesis).toBe(true);
   });
 });
 
@@ -86,13 +194,15 @@ describe("buildBriefingPrompt", () => {
     const { briefing } = await loadModules();
 
     const prompt = briefing.buildBriefingPrompt(
-      [{ slug: "longevity", name: "longevity", contentCount: 5, newCount: 2, hasSynthesis: true }],
+      [{ slug: "longevity", name: "longevity", contentCount: 50, baselineRatio: 0.05, recentRatio: 0.20, velocity: 4.0, hasSynthesis: true }],
       [],
       []
     );
     expect(prompt).toContain("longevity");
-    expect(prompt).toContain("5");
-    expect(prompt).toContain("+2 new");
+    expect(prompt).toContain("50 items");
+    expect(prompt).toContain("baseline 5%");
+    expect(prompt).toContain("recent 20%");
+    expect(prompt).toContain("4.0x");
   });
 
   it("includes topic syntheses", async () => {
@@ -143,14 +253,14 @@ describe("saveBriefing / getLatestBriefing", () => {
 
     const saved = briefing.saveBriefing(
       "## Headline\nBig insight.",
-      [{ slug: "longevity", name: "longevity", contentCount: 5, newCount: 2, hasSynthesis: true }],
+      [{ slug: "longevity", name: "longevity", contentCount: 50, baselineRatio: 0.05, recentRatio: 0.20, velocity: 4.0, hasSynthesis: true }],
       ["id1", "id2"]
     );
 
     expect(saved.id).toBeTruthy();
     expect(saved.content).toBe("## Headline\nBig insight.");
     expect(saved.topicSnapshot).toEqual([
-      { slug: "longevity", name: "longevity", contentCount: 5, newCount: 2, hasSynthesis: true },
+      { slug: "longevity", name: "longevity", contentCount: 50, baselineRatio: 0.05, recentRatio: 0.20, velocity: 4.0, hasSynthesis: true },
     ]);
     expect(saved.contentIds).toEqual(["id1", "id2"]);
     expect(saved.createdAt).toBeTruthy();
@@ -224,7 +334,8 @@ describe("generateBriefing", () => {
     expect(callClaude).toHaveBeenCalledOnce();
     expect(result.content).toBe("## Headline\nBig insight.");
     expect(result.contentIds).toContain(c1.id);
-    expect(result.topicSnapshot.length).toBeGreaterThan(0);
+    // With only 1 item, KB is below minimum for velocity — snapshot is empty
+    expect(result.topicSnapshot).toEqual([]);
   });
 
   it("uses incremental mode when previous briefing exists", async () => {

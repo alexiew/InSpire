@@ -3,8 +3,7 @@
 
 import { NextResponse } from "next/server";
 import {
-  getLatestBriefing,
-  getTopicVelocities,
+  computeTopicVelocity,
   generateBriefing,
   listBriefings,
 } from "@/lib/briefing";
@@ -12,24 +11,9 @@ import {
 export async function GET() {
   const briefings = listBriefings();
   const latest = briefings[0] ?? null;
+  const velocities = computeTopicVelocity();
 
-  // Velocity relative to the most recent briefing.
-  // Before any briefing exists, no baseline — show all topics with newCount = 0.
-  let velocities = getTopicVelocities(latest?.contentIds ?? []);
-  if (!latest) {
-    velocities = velocities.map((v) => ({ ...v, newCount: 0 }));
-  }
-
-  // Compare against the previous briefing's snapshot to detect cooling topics
-  const previousSnapshot = latest?.topicSnapshot ?? [];
-  const snapshotMap = new Map(previousSnapshot.map((t) => [t.slug, t.newCount]));
-
-  const withTrend = velocities.map((v) => ({
-    ...v,
-    previousNewCount: snapshotMap.get(v.slug) ?? 0,
-  }));
-
-  return NextResponse.json({ briefing: latest, velocities: withTrend, history: briefings });
+  return NextResponse.json({ briefing: latest, velocities, history: briefings });
 }
 
 export async function POST() {
