@@ -12,7 +12,7 @@ export interface SynthesisInput {
   claims: string[];
 }
 
-export function buildSynthesisPrompt(topicName: string, items: SynthesisInput[]): string {
+function formatItems(items: SynthesisInput[]): string {
   const sections: string[] = [];
 
   for (const item of items) {
@@ -28,11 +28,15 @@ export function buildSynthesisPrompt(topicName: string, items: SynthesisInput[])
     sections.push(parts.join("\n"));
   }
 
+  return sections.join("\n\n");
+}
+
+export function buildSynthesisPrompt(topicName: string, items: SynthesisInput[]): string {
   return `You are a research analyst synthesizing ${items.length} pieces of content about "${topicName}".
 
 For each source, here is the summary and extracted claims:
 
-${sections.join("\n\n")}
+${formatItems(items)}
 
 Produce a thorough synthesis that covers:
 - **Agreements**: Where do these sources converge? What consensus emerges?
@@ -42,6 +46,31 @@ Produce a thorough synthesis that covers:
 - **Open questions**: What important questions remain unanswered across all sources?
 
 Be specific and substantive. Reference source titles when attributing claims. Draw out non-obvious connections and implications rather than just restating what each source says.`;
+}
+
+export function buildIncrementalPrompt(topicName: string, previousSynthesis: string, newItems: SynthesisInput[]): string {
+  const plural = newItems.length === 1 ? "source" : "sources";
+
+  return `You are a research analyst updating a synthesis about "${topicName}".
+
+Here is the existing synthesis based on previously analyzed sources:
+
+---
+${previousSynthesis}
+---
+
+${newItems.length} new ${plural} to integrate:
+
+${formatItems(newItems)}
+
+Produce an updated synthesis that integrates the new material. Maintain the same structure:
+- **Agreements**: Where do these sources converge? What consensus emerges?
+- **Disagreements**: Where do they conflict or present contradictory information? Be specific about who says what.
+- **Unique insights**: What distinctive contribution does each source make that others don't cover?
+- **Deeper patterns**: What underlying themes, trends, or connections emerge when viewing these sources together?
+- **Open questions**: What important questions remain unanswered across all sources?
+
+Incorporate the new sources naturally. If they reinforce existing points, strengthen them with the new evidence. If they contradict existing points, note the disagreement. Add any new themes or insights they introduce. Be specific and substantive.`;
 }
 
 export async function synthesizeTopic(slug: string): Promise<string> {

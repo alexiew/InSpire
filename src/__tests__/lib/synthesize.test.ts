@@ -2,7 +2,7 @@
 // ABOUTME: Verifies that summaries and claims are included in synthesis prompts.
 
 import { describe, it, expect } from "vitest";
-import { buildSynthesisPrompt } from "@/lib/synthesize";
+import { buildSynthesisPrompt, buildIncrementalPrompt } from "@/lib/synthesize";
 
 describe("buildSynthesisPrompt", () => {
   const items = [
@@ -58,5 +58,48 @@ describe("buildSynthesisPrompt", () => {
   it("includes the content count", () => {
     const prompt = buildSynthesisPrompt("Sleep", items);
     expect(prompt).toContain("2 pieces of content");
+  });
+});
+
+describe("buildIncrementalPrompt", () => {
+  const previousSynthesis = "Sources agree that sleep is critical for recovery. Dr. Smith emphasizes strength impacts while Dr. Jones focuses on alertness.";
+
+  const newItems = [
+    {
+      title: "Sleep and Hormones",
+      author: "Dr. Lee",
+      summary: "Explores how sleep regulates cortisol, testosterone, and growth hormone.",
+      claims: ["Growth hormone peaks during deep sleep", "Cortisol spikes after sleep deprivation"],
+    },
+  ];
+
+  it("includes the previous synthesis", () => {
+    const prompt = buildIncrementalPrompt("Sleep", previousSynthesis, newItems);
+    expect(prompt).toContain(previousSynthesis);
+  });
+
+  it("includes only new items' summaries and claims", () => {
+    const prompt = buildIncrementalPrompt("Sleep", previousSynthesis, newItems);
+    expect(prompt).toContain("sleep regulates cortisol");
+    expect(prompt).toContain("Growth hormone peaks during deep sleep");
+  });
+
+  it("includes topic name", () => {
+    const prompt = buildIncrementalPrompt("Sleep", previousSynthesis, newItems);
+    expect(prompt).toContain('"Sleep"');
+  });
+
+  it("includes new item count", () => {
+    const prompt = buildIncrementalPrompt("Sleep", previousSynthesis, newItems);
+    expect(prompt).toContain("1 new source");
+  });
+
+  it("uses plural for multiple new items", () => {
+    const twoItems = [
+      ...newItems,
+      { title: "B", author: "Y", summary: "Summary B", claims: [] },
+    ];
+    const prompt = buildIncrementalPrompt("Sleep", previousSynthesis, twoItems);
+    expect(prompt).toContain("2 new sources");
   });
 });
