@@ -31,10 +31,17 @@ export async function POST(request: NextRequest) {
 
   const item = createContent(url, videoId, "youtube");
 
-  // Pre-assign topics if provided (e.g., when submitting from a topic page)
+  // Pre-assign topics and/or extraction hints if provided
+  const updates: Record<string, unknown> = {};
   if (Array.isArray(body.topics) && body.topics.length > 0) {
+    updates.topics = body.topics;
+  }
+  if (typeof body.extractionHints === "string" && body.extractionHints.trim()) {
+    updates.extractionHints = body.extractionHints.trim();
+  }
+  if (Object.keys(updates).length > 0) {
     const { updateContent } = await import("@/lib/content");
-    updateContent(item.id, { topics: body.topics });
+    updateContent(item.id, updates);
   }
 
   // Fire-and-forget processing
