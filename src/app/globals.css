@@ -136,4 +136,11 @@
   .print\:hidden {
     display: none !important;
   }
+  /* Allow content to flow across pages instead of clipping to viewport */
+  .flex.h-screen {
+    height: auto !important;
+  }
+  .overflow-y-auto {
+    overflow: visible !important;
+  }
 }
