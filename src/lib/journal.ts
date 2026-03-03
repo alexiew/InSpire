@@ -89,9 +89,9 @@ export function createJournalEntry(
   return rowToEntry(row);
 }
 
-export function updateJournalNote(id: number, note: string | null): JournalEntry | null {
+export function updateJournalText(id: number, text: string): JournalEntry | null {
   const db = getDb();
-  const result = db.prepare("UPDATE journal_entries SET note = ? WHERE id = ?").run(note, id);
+  const result = db.prepare("UPDATE journal_entries SET text = ? WHERE id = ?").run(text, id);
   if (result.changes === 0) return null;
   const row = db.prepare(`${ENTRY_QUERY} WHERE j.id = ?`).get(id) as JournalRow | undefined;
   return row ? rowToEntry(row) : null;

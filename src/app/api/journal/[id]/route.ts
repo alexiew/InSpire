@@ -1,8 +1,8 @@
 // ABOUTME: API route for a single journal entry.
-// ABOUTME: Supports updating notes and deleting entries by ID.
+// ABOUTME: Supports updating text and deleting entries by ID.
 
 import { NextRequest, NextResponse } from "next/server";
-import { deleteJournalEntry, updateJournalNote } from "@/lib/journal";
+import { deleteJournalEntry, updateJournalText } from "@/lib/journal";
 
 export async function PATCH(
   request: NextRequest,
@@ -10,8 +10,12 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const body = await request.json();
-  const note = typeof body.note === "string" ? body.note : null;
-  const entry = updateJournalNote(Number(id), note);
+
+  if (typeof body.text !== "string" || !body.text.trim()) {
+    return NextResponse.json({ error: "text must be a non-empty string" }, { status: 400 });
+  }
+
+  const entry = updateJournalText(Number(id), body.text.trim());
   if (!entry) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
