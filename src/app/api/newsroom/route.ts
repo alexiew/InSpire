@@ -20,7 +20,16 @@ export async function GET() {
     velocities = velocities.map((v) => ({ ...v, newCount: 0 }));
   }
 
-  return NextResponse.json({ briefing: latest, velocities, history: briefings });
+  // Compare against the previous briefing's snapshot to detect cooling topics
+  const previousSnapshot = latest?.topicSnapshot ?? [];
+  const snapshotMap = new Map(previousSnapshot.map((t) => [t.slug, t.newCount]));
+
+  const withTrend = velocities.map((v) => ({
+    ...v,
+    previousNewCount: snapshotMap.get(v.slug) ?? 0,
+  }));
+
+  return NextResponse.json({ briefing: latest, velocities: withTrend, history: briefings });
 }
 
 export async function POST() {

@@ -10,21 +10,67 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SelectionJournal } from "@/components/content/selection-journal";
 import { useNewsroom } from "@/hooks/use-newsroom";
-import type { Briefing, TopicVelocity } from "@/lib/briefing";
+import type { Briefing } from "@/lib/briefing";
 
-function VelocityCard({ topic }: { topic: TopicVelocity }) {
-  const isHot = topic.newCount > 0;
+interface DisplayVelocity {
+  slug: string;
+  name: string;
+  contentCount: number;
+  newCount: number;
+  previousNewCount: number;
+  hasSynthesis: boolean;
+}
+
+const MAX_VELOCITY_CARDS = 7;
+
+function selectDisplayTopics(velocities: DisplayVelocity[]): DisplayVelocity[] {
+  // Rising: has new content now
+  const rising = velocities
+    .filter((v) => v.newCount > 0)
+    .sort((a, b) => b.newCount - a.newCount);
+
+  // Cooling: had new content last briefing, but none now
+  const cooling = velocities
+    .filter((v) => v.newCount === 0 && v.previousNewCount > 0)
+    .sort((a, b) => b.previousNewCount - a.previousNewCount);
+
+  // Fill up to MAX: rising first, then cooling
+  const result: DisplayVelocity[] = [];
+  const risingSlots = Math.min(rising.length, Math.ceil(MAX_VELOCITY_CARDS / 2));
+  const coolingSlots = Math.min(cooling.length, MAX_VELOCITY_CARDS - risingSlots);
+  const extraRising = Math.min(rising.length - risingSlots, MAX_VELOCITY_CARDS - risingSlots - coolingSlots);
+
+  result.push(...rising.slice(0, risingSlots + extraRising));
+  result.push(...cooling.slice(0, coolingSlots));
+  return result;
+}
+
+function VelocityCard({ topic }: { topic: DisplayVelocity }) {
+  const isRising = topic.newCount > 0;
+  const isCooling = topic.newCount === 0 && topic.previousNewCount > 0;
+
+  let bgClass = "bg-muted/30";
+  let textClass = "text-muted-foreground";
+  let indicator = "— ";
+
+  if (isRising) {
+    bgClass = "bg-green-500/10 border-green-500/30";
+    textClass = "text-green-600 dark:text-green-400";
+    indicator = `+${topic.newCount} ▲`;
+  } else if (isCooling) {
+    bgClass = "bg-red-500/10 border-red-500/30";
+    textClass = "text-red-600 dark:text-red-400";
+    indicator = `▼ was +${topic.previousNewCount}`;
+  }
 
   return (
     <Link href={`/topics/${topic.slug}`}>
       <Card
-        className={`flex flex-col items-center justify-center p-3 min-w-[100px] text-center transition-colors hover:border-primary/50 ${
-          isHot ? "bg-green-500/10 border-green-500/30" : "bg-muted/30"
-        }`}
+        className={`flex flex-col items-center justify-center p-3 min-w-[100px] text-center transition-colors hover:border-primary/50 ${bgClass}`}
       >
         <span className="text-xs font-medium truncate w-full">{topic.name}</span>
-        <span className={`text-sm font-bold ${isHot ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
-          {isHot ? `+${topic.newCount} ▲` : "— "}
+        <span className={`text-sm font-bold ${textClass}`}>
+          {indicator}
         </span>
         <span className="text-xs text-muted-foreground">{topic.contentCount} total</span>
       </Card>
@@ -70,9 +116,10 @@ export default function NewsroomPage() {
   const [explaining, setExplaining] = useState(false);
 
   const briefing = data?.briefing ?? null;
-  const velocities = data?.velocities ?? [];
+  const velocities = (data?.velocities ?? []) as DisplayVelocity[];
   const history = data?.history ?? [];
-  const pastBriefings = history.slice(1); // everything except the latest
+  const pastBriefings = history.slice(1);
+  const displayTopics = selectDisplayTopics(velocities);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -149,9 +196,9 @@ export default function NewsroomPage() {
         </div>
       </div>
 
-      {velocities.length > 0 && (
+      {displayTopics.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-2 print:hidden">
-          {velocities.map((topic) => (
+          {displayTopics.map((topic) => (
             <VelocityCard key={topic.slug} topic={topic} />
           ))}
         </div>
