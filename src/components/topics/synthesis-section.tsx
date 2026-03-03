@@ -86,7 +86,9 @@ export function SynthesisSection({
       </div>
 
       {error && (
-        <p className="text-sm text-destructive">{error}</p>
+        <p className={`text-sm ${error.includes("up to date") ? "text-muted-foreground" : "text-destructive"}`}>
+          {error}
+        </p>
       )}
 
       {generating && !synthesis && (
