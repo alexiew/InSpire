@@ -79,6 +79,74 @@ describe("listJournalEntries", () => {
   });
 });
 
+describe("source grouping", () => {
+  it("appends to existing entry with same source on same day", async () => {
+    const { createJournalEntry, listJournalEntries, createContent } = await loadModules();
+
+    const c = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    createJournalEntry(c.id, "First highlight");
+    createJournalEntry(c.id, "Second highlight");
+
+    const entries = listJournalEntries();
+    expect(entries).toHaveLength(1);
+    expect(entries[0].text).toContain("First highlight");
+    expect(entries[0].text).toContain("Second highlight");
+  });
+
+  it("creates separate entries for different sources on same day", async () => {
+    const { createJournalEntry, listJournalEntries, createContent } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    createJournalEntry(c1.id, "From video A");
+    createJournalEntry(c2.id, "From video B");
+
+    const entries = listJournalEntries();
+    expect(entries).toHaveLength(2);
+  });
+
+  it("groups briefing highlights under source 'briefing'", async () => {
+    const { createJournalEntry, listJournalEntries } = await loadModules();
+
+    createJournalEntry(null, "Bold claim about longevity", "briefing");
+    createJournalEntry(null, "Moonshot prediction on AI", "briefing");
+
+    const entries = listJournalEntries();
+    expect(entries).toHaveLength(1);
+    expect(entries[0].text).toContain("Bold claim about longevity");
+    expect(entries[0].text).toContain("Moonshot prediction on AI");
+    expect(entries[0].source).toBe("briefing");
+  });
+
+  it("does not append to entries from a previous day", async () => {
+    const { createJournalEntry, listJournalEntries, createContent } = await loadModules();
+    const { getDb } = await import("@/lib/db");
+
+    const c = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    createJournalEntry(c.id, "Yesterday highlight");
+
+    // Backdate the entry to yesterday
+    const db = getDb();
+    const yesterday = new Date(Date.now() - 86400000).toISOString();
+    db.prepare("UPDATE journal_entries SET created_at = ?").run(yesterday);
+
+    createJournalEntry(c.id, "Today highlight");
+
+    const entries = listJournalEntries();
+    expect(entries).toHaveLength(2);
+  });
+
+  it("does not group entries without a source", async () => {
+    const { createJournalEntry, listJournalEntries } = await loadModules();
+
+    createJournalEntry(null, "Freeform note 1");
+    createJournalEntry(null, "Freeform note 2");
+
+    const entries = listJournalEntries();
+    expect(entries).toHaveLength(2);
+  });
+});
+
 describe("deleteJournalEntry", () => {
   it("deletes an entry and returns true", async () => {
     const { createJournalEntry, deleteJournalEntry, listJournalEntries } =

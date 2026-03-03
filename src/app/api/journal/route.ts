@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
   }
 
   const contentId = typeof body.contentId === "string" ? body.contentId : null;
-  const entry = createJournalEntry(contentId, body.text.trim());
+  const source = typeof body.source === "string" ? body.source : undefined;
+  const entry = createJournalEntry(contentId, body.text.trim(), source);
   return NextResponse.json(entry, { status: 201 });
 }

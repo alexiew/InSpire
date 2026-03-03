@@ -151,6 +151,7 @@ function initSchema(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS journal_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       content_id TEXT REFERENCES content(id) ON DELETE SET NULL,
+      source TEXT,
       text TEXT NOT NULL,
       note TEXT,
       created_at TEXT NOT NULL

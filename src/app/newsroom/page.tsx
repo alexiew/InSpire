@@ -85,7 +85,7 @@ function PastBriefingCard({ briefing, onExplain }: { briefing: Briefing; onExpla
       </button>
       {expanded && (
         <div className="border-t px-6 py-4">
-          <SelectionJournal showExplain onExplain={onExplain}>
+          <SelectionJournal source="briefing" showExplain onExplain={onExplain}>
             <div className="prose prose-sm max-w-none whitespace-pre-wrap">
               {briefing.content}
             </div>
@@ -226,7 +226,7 @@ export default function NewsroomPage() {
               {new Date(briefing.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
             </p>
           </div>
-          <SelectionJournal showExplain onExplain={handleExplain}>
+          <SelectionJournal source="briefing" showExplain onExplain={handleExplain}>
             <div className="prose prose-sm max-w-none whitespace-pre-wrap">
               {briefing.content}
             </div>

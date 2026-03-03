@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/button";
 
 interface SelectionJournalProps {
   contentId?: string | null;
+  source?: string;
   showExplain?: boolean;
   onExplain?: (text: string) => void;
   children: React.ReactNode;
 }
 
-export function SelectionJournal({ contentId, showExplain, onExplain, children }: SelectionJournalProps) {
+export function SelectionJournal({ contentId, source, showExplain, onExplain, children }: SelectionJournalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -71,7 +72,7 @@ export function SelectionJournal({ contentId, showExplain, onExplain, children }
     await fetch("/api/journal", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contentId: contentId ?? null, text: selectedText }),
+      body: JSON.stringify({ contentId: contentId ?? null, text: selectedText, source }),
     });
 
     setSaved(true);
