@@ -193,6 +193,11 @@ function initSchema(db: Database.Database): void {
     db.exec("ALTER TABLE subscriptions ADD COLUMN extraction_hints TEXT NOT NULL DEFAULT ''");
   }
 
+  const journalColumns = db.prepare("PRAGMA table_info(journal_entries)").all() as { name: string }[];
+  if (!journalColumns.some((c) => c.name === "source")) {
+    db.exec("ALTER TABLE journal_entries ADD COLUMN source TEXT");
+  }
+
   const synthHistColumns = db.prepare("PRAGMA table_info(synthesis_history)").all() as { name: string }[];
   if (!synthHistColumns.some((c) => c.name === "content_ids")) {
     db.exec("ALTER TABLE synthesis_history ADD COLUMN content_ids TEXT NOT NULL DEFAULT '[]'");
