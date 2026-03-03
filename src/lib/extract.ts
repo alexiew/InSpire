@@ -13,11 +13,17 @@ export interface ExtractionResult {
 export function buildExtractionPrompt(
   title: string,
   transcript: string,
-  existingTopics?: string[]
+  existingTopics?: string[],
+  extractionHints?: string
 ): string {
   const topicsSection =
     existingTopics && existingTopics.length > 0
       ? `\nThe knowledge base already contains these topics:\n${existingTopics.join(", ")}\n\nWhen assigning topics, REUSE existing topics from this list wherever they fit.\nOnly create a new topic if the content genuinely doesn't match any existing topic.\n`
+      : "";
+
+  const hintsSection =
+    extractionHints
+      ? `\nAdditional instructions for this content:\n${extractionHints}\n`
       : "";
 
   return `Analyze this transcript titled "${title}".
@@ -39,7 +45,7 @@ Guidelines for the metadata:
 - **topics**: 3-5 topic tags. Use meaningful categories like "longevity", "vitamin D", "neuroplasticity", "intermittent fasting" — specific enough to search and organize by, broad enough that multiple sources could share them. Avoid overly broad tags like "health" or "science". Reuse existing topics where they fit. Only create a new topic if nothing matches.
 - **claims**: 3-7 core claims made in the content, each as a single clear sentence.
 - **people**: Key people mentioned, interviewed, or presenting.
-${topicsSection}
+${topicsSection}${hintsSection}
 The JSON block MUST be the last thing in your output.
 
 Transcript:
@@ -95,9 +101,10 @@ export function filterAuthor(people: string[], author: string): string[] {
 export async function extract(
   title: string,
   transcript: string,
-  existingTopics?: string[]
+  existingTopics?: string[],
+  extractionHints?: string
 ): Promise<ExtractionResult> {
-  const prompt = buildExtractionPrompt(title, transcript, existingTopics);
+  const prompt = buildExtractionPrompt(title, transcript, existingTopics, extractionHints);
   const raw = await callClaude(prompt);
   return parseExtraction(raw);
 }

@@ -33,7 +33,8 @@ export async function processContent(id: string): Promise<void> {
     // Extract structured knowledge, merging with any pre-assigned topics
     const current = getContent(id);
     const existingTopicNames = listTopics().map((t) => t.name);
-    const result = await extract(current!.title, transcript, existingTopicNames);
+    const hints = current!.extractionHints || undefined;
+    const result = await extract(current!.title, transcript, existingTopicNames, hints);
     const mergedTopics = [...new Set([...(current?.topics || []), ...result.topics])];
     const people = filterAuthor(result.people, current!.author);
     updateContent(id, {

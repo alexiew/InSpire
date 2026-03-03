@@ -20,6 +20,7 @@ export interface ContentItem {
   topics: string[];
   claims: string[];
   people: string[];
+  extractionHints: string;
   status: ContentStatus;
   error?: string;
   createdAt: string;
@@ -37,6 +38,7 @@ interface ContentRow {
   transcript: string;
   summary: string;
   claims: string;
+  extraction_hints: string;
   status: string;
   error: string | null;
   created_at: string;
@@ -72,6 +74,7 @@ function rowToContentItem(row: ContentRow): ContentItem {
     thumbnailUrl: row.thumbnail_url,
     transcript: row.transcript,
     summary: row.summary,
+    extractionHints: row.extraction_hints,
     topics: topicRows.map((r) => r.topic_slug).map((slug) => {
       const topic = db.prepare("SELECT name FROM topics WHERE slug = ?").get(slug) as { name: string } | undefined;
       return topic ? topic.name : slug;
@@ -206,6 +209,7 @@ export function updateContent(
     if (updates.transcript !== undefined) { setClauses.push("transcript = ?"); values.push(updates.transcript); }
     if (updates.summary !== undefined) { setClauses.push("summary = ?"); values.push(updates.summary); }
     if (updates.claims !== undefined) { setClauses.push("claims = ?"); values.push(JSON.stringify(updates.claims)); }
+    if (updates.extractionHints !== undefined) { setClauses.push("extraction_hints = ?"); values.push(updates.extractionHints); }
     if (updates.status !== undefined) { setClauses.push("status = ?"); values.push(updates.status); }
     if (updates.error !== undefined) { setClauses.push("error = ?"); values.push(updates.error); }
     if (updates.url !== undefined) { setClauses.push("url = ?"); values.push(updates.url); }

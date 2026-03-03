@@ -4,11 +4,92 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Trash2, RefreshCw } from "lucide-react";
+import { Loader2, Trash2, RefreshCw, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSubscriptions } from "@/hooks/use-subscriptions";
+
+interface Subscription {
+  id: number;
+  sourceType: string;
+  name: string;
+  extractionHints: string;
+  lastCheckedAt: string | null;
+}
+
+function SubscriptionCard({
+  sub,
+  formatLastChecked,
+  onDelete,
+  onSaveHints,
+}: {
+  sub: Subscription;
+  formatLastChecked: (d: string | null) => string;
+  onDelete: (id: number) => void;
+  onSaveHints: (id: number, hints: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [hints, setHints] = useState(sub.extractionHints);
+
+  function handleSave() {
+    onSaveHints(sub.id, hints);
+    setEditing(false);
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between space-y-0">
+        <div>
+          <CardTitle className="text-base">{sub.name}</CardTitle>
+          <CardDescription>
+            {sub.sourceType === "podcast" ? "Podcast" : "YouTube"} · {formatLastChecked(sub.lastCheckedAt)}
+          </CardDescription>
+        </div>
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setEditing(!editing)}
+            title="Extraction hints"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(sub.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardHeader>
+      {editing && (
+        <CardContent className="pt-0 space-y-2">
+          <Textarea
+            placeholder="Extraction hints for this channel (e.g., 'Include step-by-step instructions and tool configurations')"
+            value={hints}
+            onChange={(e) => setHints(e.target.value)}
+            rows={2}
+            className="text-sm"
+          />
+          <div className="flex justify-end">
+            <Button size="sm" onClick={handleSave}>
+              <Check className="h-3 w-3 mr-1" />
+              Save
+            </Button>
+          </div>
+        </CardContent>
+      )}
+      {!editing && sub.extractionHints && (
+        <CardContent className="pt-0">
+          <p className="text-xs text-muted-foreground">{sub.extractionHints}</p>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
 
 export default function SubscriptionsPage() {
   const { data: subscriptions, mutate } = useSubscriptions();
@@ -43,6 +124,15 @@ export default function SubscriptionsPage() {
 
   async function handleDelete(id: number) {
     await fetch(`/api/subscriptions/${id}`, { method: "DELETE" });
+    mutate();
+  }
+
+  async function handleSaveHints(id: number, hints: string) {
+    await fetch(`/api/subscriptions/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ extractionHints: hints }),
+    });
     mutate();
   }
 
@@ -118,23 +208,13 @@ export default function SubscriptionsPage() {
       {hasSubs ? (
         <div className="space-y-3">
           {subscriptions.map((sub) => (
-            <Card key={sub.id}>
-              <CardHeader className="flex-row items-center justify-between space-y-0">
-                <div>
-                  <CardTitle className="text-base">{sub.name}</CardTitle>
-                  <CardDescription>
-                    {sub.sourceType === "podcast" ? "Podcast" : "YouTube"} · {formatLastChecked(sub.lastCheckedAt)}
-                  </CardDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(sub.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </CardHeader>
-            </Card>
+            <SubscriptionCard
+              key={sub.id}
+              sub={sub}
+              formatLastChecked={formatLastChecked}
+              onDelete={handleDelete}
+              onSaveHints={handleSaveHints}
+            />
           ))}
         </div>
       ) : subscriptions ? (

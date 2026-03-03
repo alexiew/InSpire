@@ -81,6 +81,22 @@ describe("deleteSubscription", () => {
   });
 });
 
+describe("updateSubscription", () => {
+  it("updates extraction hints", async () => {
+    const { createSubscription, updateSubscription } = await loadModules();
+    const sub = createSubscription("youtube", "UC1234567890abcdefghij", "Test");
+    expect(sub.extractionHints).toBe("");
+
+    const updated = updateSubscription(sub.id, { extractionHints: "Include step-by-step instructions" });
+    expect(updated?.extractionHints).toBe("Include step-by-step instructions");
+  });
+
+  it("returns undefined for nonexistent id", async () => {
+    const { updateSubscription } = await loadModules();
+    expect(updateSubscription(999, { extractionHints: "test" })).toBeUndefined();
+  });
+});
+
 describe("contentExists", () => {
   it("returns false when source_id not in database", async () => {
     const { contentExists } = await loadModules();

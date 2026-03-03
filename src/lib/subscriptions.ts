@@ -12,6 +12,7 @@ export interface Subscription {
   sourceType: string;
   sourceIdentifier: string;
   name: string;
+  extractionHints: string;
   subscribedAt: string;
   lastCheckedAt: string | null;
 }
@@ -21,6 +22,7 @@ interface SubscriptionRow {
   source_type: string;
   source_identifier: string;
   name: string;
+  extraction_hints: string;
   subscribed_at: string;
   last_checked_at: string | null;
 }
@@ -31,6 +33,7 @@ function rowToSubscription(row: SubscriptionRow): Subscription {
     sourceType: row.source_type,
     sourceIdentifier: row.source_identifier,
     name: row.name,
+    extractionHints: row.extraction_hints,
     subscribedAt: row.subscribed_at,
     lastCheckedAt: row.last_checked_at,
   };
@@ -57,6 +60,20 @@ export function createSubscription(sourceType: string, sourceIdentifier: string,
 
   return rowToSubscription(
     db.prepare("SELECT * FROM subscriptions WHERE id = ?").get(result.lastInsertRowid) as SubscriptionRow
+  );
+}
+
+export function updateSubscription(id: number, updates: { extractionHints?: string }): Subscription | undefined {
+  const db = getDb();
+  const existing = db.prepare("SELECT * FROM subscriptions WHERE id = ?").get(id) as SubscriptionRow | undefined;
+  if (!existing) return undefined;
+
+  if (updates.extractionHints !== undefined) {
+    db.prepare("UPDATE subscriptions SET extraction_hints = ? WHERE id = ?").run(updates.extractionHints, id);
+  }
+
+  return rowToSubscription(
+    db.prepare("SELECT * FROM subscriptions WHERE id = ?").get(id) as SubscriptionRow
   );
 }
 
@@ -107,6 +124,9 @@ async function checkYouTubeSubscription(row: SubscriptionRow): Promise<number> {
 
     const url = `https://www.youtube.com/watch?v=${video.videoId}`;
     const item = createContent(url, video.videoId, "youtube");
+    if (row.extraction_hints) {
+      updateContent(item.id, { extractionHints: row.extraction_hints });
+    }
     processContent(item.id).catch(() => {});
     ingested++;
   }
@@ -126,6 +146,7 @@ async function checkPodcastSubscription(row: SubscriptionRow): Promise<number> {
       title: episode.title,
       author: feed.title,
       thumbnailUrl: feed.imageUrl,
+      ...(row.extraction_hints ? { extractionHints: row.extraction_hints } : {}),
     });
     processContent(item.id).catch(() => {});
     ingested++;

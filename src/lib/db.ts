@@ -48,6 +48,7 @@ function initSchema(db: Database.Database): void {
       transcript TEXT NOT NULL DEFAULT '',
       summary TEXT NOT NULL DEFAULT '',
       claims TEXT NOT NULL DEFAULT '[]',
+      extraction_hints TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'processing',
       error TEXT,
       created_at TEXT NOT NULL,
@@ -91,6 +92,7 @@ function initSchema(db: Database.Database): void {
       source_type TEXT NOT NULL,
       source_identifier TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL DEFAULT '',
+      extraction_hints TEXT NOT NULL DEFAULT '',
       subscribed_at TEXT NOT NULL,
       last_checked_at TEXT
     );
@@ -121,6 +123,16 @@ function initSchema(db: Database.Database): void {
   const peopleColumns = db.prepare("PRAGMA table_info(people)").all() as { name: string }[];
   if (!peopleColumns.some((c) => c.name === "slug")) {
     db.exec("ALTER TABLE people ADD COLUMN slug TEXT NOT NULL DEFAULT ''");
+  }
+
+  const contentColumns = db.prepare("PRAGMA table_info(content)").all() as { name: string }[];
+  if (!contentColumns.some((c) => c.name === "extraction_hints")) {
+    db.exec("ALTER TABLE content ADD COLUMN extraction_hints TEXT NOT NULL DEFAULT ''");
+  }
+
+  const subColumns = db.prepare("PRAGMA table_info(subscriptions)").all() as { name: string }[];
+  if (!subColumns.some((c) => c.name === "extraction_hints")) {
+    db.exec("ALTER TABLE subscriptions ADD COLUMN extraction_hints TEXT NOT NULL DEFAULT ''");
   }
 
   // One-time migration: 'ready' → 'accepted' for pre-lifecycle content.

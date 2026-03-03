@@ -121,6 +121,18 @@ describe("buildExtractionPrompt", () => {
     expect(prompt).toContain("longevity, neuroplasticity, intermittent fasting");
     expect(prompt).toContain("REUSE existing topics");
   });
+
+  it("does not include extraction hints when not provided", () => {
+    const prompt = buildExtractionPrompt("Title", "Transcript");
+    expect(prompt).not.toContain("Additional instructions");
+  });
+
+  it("includes extraction hints when provided", () => {
+    const hints = "Include step-by-step instructions and tool configurations.";
+    const prompt = buildExtractionPrompt("Title", "Transcript", [], hints);
+    expect(prompt).toContain("Additional instructions");
+    expect(prompt).toContain("step-by-step instructions and tool configurations");
+  });
 });
 
 describe("filterAuthor", () => {
