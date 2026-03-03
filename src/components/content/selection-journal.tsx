@@ -1,18 +1,20 @@
 // ABOUTME: Floating toolbar that appears on text selection.
-// ABOUTME: Offers "Add to Journal" to save highlights and "Lookup" to search the term on Google.
+// ABOUTME: Offers Journal, Lookup, and optional Explain actions for selected text.
 
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { BookmarkPlus, Check, Search } from "lucide-react";
+import { BookmarkPlus, Check, Search, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SelectionJournalProps {
-  contentId: string;
+  contentId?: string | null;
+  showExplain?: boolean;
+  onExplain?: (text: string) => void;
   children: React.ReactNode;
 }
 
-export function SelectionJournal({ contentId, children }: SelectionJournalProps) {
+export function SelectionJournal({ contentId, showExplain, onExplain, children }: SelectionJournalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -69,7 +71,7 @@ export function SelectionJournal({ contentId, children }: SelectionJournalProps)
     await fetch("/api/journal", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contentId, text: selectedText }),
+      body: JSON.stringify({ contentId: contentId ?? null, text: selectedText }),
     });
 
     setSaved(true);
@@ -78,6 +80,13 @@ export function SelectionJournal({ contentId, children }: SelectionJournalProps)
       setSelectedText("");
       setSaved(false);
     }, 1000);
+  }
+
+  function handleExplain() {
+    if (!selectedText || !onExplain) return;
+    onExplain(selectedText);
+    setPosition(null);
+    setSelectedText("");
   }
 
   return (
@@ -128,6 +137,17 @@ export function SelectionJournal({ contentId, children }: SelectionJournalProps)
                 Lookup
               </a>
             </Button>
+            {showExplain && onExplain && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="shadow-md text-xs h-7 gap-1"
+                onClick={handleExplain}
+              >
+                <Sparkles className="h-3 w-3" />
+                Explain
+              </Button>
+            )}
           </div>
         </div>
       )}

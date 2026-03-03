@@ -5,9 +5,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2, Zap } from "lucide-react";
+import { Loader2, Zap, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { SelectionJournal } from "@/components/content/selection-journal";
 import { useNewsroom } from "@/hooks/use-newsroom";
 import type { TopicVelocity } from "@/lib/briefing";
 
@@ -35,6 +36,8 @@ export default function NewsroomPage() {
   const { data, mutate } = useNewsroom();
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState<{ text: string; content: string } | null>(null);
+  const [explaining, setExplaining] = useState(false);
 
   const briefing = data?.briefing ?? null;
   const velocities = data?.velocities ?? [];
@@ -57,6 +60,31 @@ export default function NewsroomPage() {
       setError("Failed to generate briefing");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleExplain(text: string) {
+    setExplaining(true);
+    setExplanation(null);
+
+    try {
+      const res = await fetch("/api/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError(json.error || "Failed to explain");
+        return;
+      }
+
+      setExplanation({ text, content: json.explanation });
+    } catch {
+      setError("Failed to explain selection");
+    } finally {
+      setExplaining(false);
     }
   }
 
@@ -103,9 +131,11 @@ export default function NewsroomPage() {
 
       {briefing && (
         <Card className="p-6">
-          <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-            {briefing.content}
-          </div>
+          <SelectionJournal showExplain onExplain={handleExplain}>
+            <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+              {briefing.content}
+            </div>
+          </SelectionJournal>
 
           <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground border-t pt-3">
             <span>
@@ -117,6 +147,38 @@ export default function NewsroomPage() {
             {totalNew > 0 && (
               <span>{totalNew} new items since last briefing</span>
             )}
+          </div>
+        </Card>
+      )}
+
+      {explaining && (
+        <Card className="p-6 border-primary/30 bg-primary/5">
+          <p className="text-sm text-muted-foreground animate-pulse">
+            <Loader2 className="inline h-3 w-3 animate-spin mr-1" />
+            Explaining...
+          </p>
+        </Card>
+      )}
+
+      {explanation && (
+        <Card className="p-6 border-primary/30 bg-primary/5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 space-y-3">
+              <p className="text-xs font-medium text-primary">
+                Explaining: &ldquo;{explanation.text.slice(0, 100)}{explanation.text.length > 100 ? "..." : ""}&rdquo;
+              </p>
+              <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+                {explanation.content}
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0 shrink-0"
+              onClick={() => setExplanation(null)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </Card>
       )}
