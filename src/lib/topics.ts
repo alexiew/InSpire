@@ -101,6 +101,57 @@ export function getLatestSynthesisRecord(slug: string): { synthesis: string; con
   return { synthesis: row.synthesis, contentIds: JSON.parse(row.content_ids) };
 }
 
+export interface GraphNode {
+  slug: string;
+  name: string;
+  contentCount: number;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  weight: number;
+}
+
+export interface TopicGraph {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export function getTopicGraph(): TopicGraph {
+  const db = getDb();
+
+  const nodeRows = db
+    .prepare(
+      `SELECT t.slug, t.name, COUNT(ct.content_id) as content_count
+       FROM topics t
+       JOIN content_topics ct ON ct.topic_slug = t.slug
+       JOIN content c ON c.id = ct.content_id AND c.status = 'accepted'
+       GROUP BY t.slug
+       HAVING content_count > 0`
+    )
+    .all() as { slug: string; name: string; content_count: number }[];
+
+  const nodes: GraphNode[] = nodeRows.map((r) => ({
+    slug: r.slug,
+    name: r.name,
+    contentCount: r.content_count,
+  }));
+
+  const edges = db
+    .prepare(
+      `SELECT ct1.topic_slug as source, ct2.topic_slug as target, COUNT(*) as weight
+       FROM content_topics ct1
+       JOIN content_topics ct2 ON ct1.content_id = ct2.content_id
+       JOIN content c ON c.id = ct1.content_id AND c.status = 'accepted'
+       WHERE ct1.topic_slug < ct2.topic_slug
+       GROUP BY ct1.topic_slug, ct2.topic_slug`
+    )
+    .all() as GraphEdge[];
+
+  return { nodes, edges };
+}
+
 export function deleteTopic(slug: string): boolean {
   const db = getDb();
   const result = db.prepare("DELETE FROM topics WHERE slug = ?").run(slug);

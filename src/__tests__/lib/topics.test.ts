@@ -275,6 +275,59 @@ describe("updateTopicSynthesis", () => {
   });
 });
 
+describe("getTopicGraph", () => {
+  it("returns nodes for topics with content", async () => {
+    const { createContent, updateContent, getTopicGraph } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { topics: ["sleep", "longevity"], status: "accepted" });
+
+    const graph = getTopicGraph();
+    expect(graph.nodes).toHaveLength(2);
+    expect(graph.nodes.map((n) => n.name).sort()).toEqual(["longevity", "sleep"]);
+    expect(graph.nodes[0].contentCount).toBe(1);
+  });
+
+  it("returns edges for topics sharing content", async () => {
+    const { createContent, updateContent, getTopicGraph } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { topics: ["sleep", "longevity"], status: "accepted" });
+
+    const graph = getTopicGraph();
+    expect(graph.edges).toHaveLength(1);
+    const edge = graph.edges[0];
+    expect([edge.source, edge.target].sort()).toEqual(["longevity", "sleep"]);
+    expect(edge.weight).toBe(1);
+  });
+
+  it("excludes topics with no content", async () => {
+    const { createContent, updateContent, createTopic, getTopicGraph } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { topics: ["sleep"], status: "accepted" });
+    createTopic("orphan topic");
+
+    const graph = getTopicGraph();
+    expect(graph.nodes).toHaveLength(1);
+    expect(graph.nodes[0].name).toBe("sleep");
+  });
+
+  it("edge weight reflects number of shared items", async () => {
+    const { createContent, updateContent, getTopicGraph } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { topics: ["sleep", "longevity"], status: "accepted" });
+
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    updateContent(c2.id, { topics: ["sleep", "longevity"], status: "accepted" });
+
+    const graph = getTopicGraph();
+    expect(graph.edges).toHaveLength(1);
+    expect(graph.edges[0].weight).toBe(2);
+  });
+});
+
 describe("getLatestSynthesisRecord", () => {
   it("returns the most recent synthesis record", async () => {
     const {

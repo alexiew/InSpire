@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Inbox, BookOpen, Hash, Users, FolderOpen, Rss, BookMarked, Newspaper } from "lucide-react";
+import { Inbox, BookOpen, Hash, Users, Network, Rss, BookMarked, Newspaper } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
 import { useRecent } from "@/hooks/use-recent";
@@ -15,7 +15,7 @@ const navItems = [
   { href: "/library", label: "Library", icon: BookOpen },
   { href: "/", label: "Topics", icon: Hash },
   { href: "/people", label: "People", icon: Users },
-  { href: "/categories", label: "Categories", icon: FolderOpen },
+  { href: "/categories", label: "Map", icon: Network },
   { href: "/subscriptions", label: "Subscriptions", icon: Rss },
   { href: "/journal", label: "Journal", icon: BookMarked },
   { href: "/newsroom", label: "Newsroom", icon: Newspaper },
