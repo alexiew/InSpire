@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2, Zap, X, ChevronDown, ChevronRight } from "lucide-react";
+import { Loader2, Zap, X, ChevronDown, ChevronRight, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SelectionJournal } from "@/components/content/selection-journal";
@@ -124,25 +124,33 @@ export default function NewsroomPage() {
 
   return (
     <div className="mx-auto max-w-4xl p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between print:hidden">
         <h1 className="text-2xl font-bold">Newsroom</h1>
-        <Button onClick={handleGenerate} disabled={generating}>
-          {generating ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Generating...
-            </>
-          ) : (
-            <>
-              <Zap className="mr-2 h-4 w-4" />
-              Generate Briefing
-            </>
+        <div className="flex gap-2">
+          {briefing && (
+            <Button variant="outline" onClick={() => window.print()}>
+              <Printer className="mr-2 h-4 w-4" />
+              Print
+            </Button>
           )}
-        </Button>
+          <Button onClick={handleGenerate} disabled={generating}>
+            {generating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Zap className="mr-2 h-4 w-4" />
+                Generate Briefing
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {velocities.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div className="flex gap-2 overflow-x-auto pb-2 print:hidden">
           {velocities.map((topic) => (
             <VelocityCard key={topic.slug} topic={topic} />
           ))}
@@ -162,14 +170,20 @@ export default function NewsroomPage() {
       )}
 
       {briefing && (
-        <Card className="p-6">
+        <Card className="p-6 print:border-0 print:shadow-none print:p-0">
+          <div className="hidden print:block mb-4">
+            <h1 className="text-2xl font-bold">InSpire Briefing</h1>
+            <p className="text-sm text-muted-foreground">
+              {new Date(briefing.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
+            </p>
+          </div>
           <SelectionJournal showExplain onExplain={handleExplain}>
             <div className="prose prose-sm max-w-none whitespace-pre-wrap">
               {briefing.content}
             </div>
           </SelectionJournal>
 
-          <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground border-t pt-3">
+          <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground border-t pt-3 print:hidden">
             <span>
               Generated {new Date(briefing.createdAt).toLocaleString()}
             </span>
@@ -184,7 +198,7 @@ export default function NewsroomPage() {
       )}
 
       {explaining && (
-        <Card className="p-6 border-primary/30 bg-primary/5">
+        <Card className="p-6 border-primary/30 bg-primary/5 print:hidden">
           <p className="text-sm text-muted-foreground animate-pulse">
             <Loader2 className="inline h-3 w-3 animate-spin mr-1" />
             Explaining...
@@ -193,7 +207,7 @@ export default function NewsroomPage() {
       )}
 
       {explanation && (
-        <Card className="p-6 border-primary/30 bg-primary/5">
+        <Card className="p-6 border-primary/30 bg-primary/5 print:hidden">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 space-y-3">
               <p className="text-xs font-medium text-primary">
@@ -216,7 +230,7 @@ export default function NewsroomPage() {
       )}
 
       {pastBriefings.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-3 print:hidden">
           <h2 className="text-sm font-medium text-muted-foreground">Past Briefings</h2>
           {pastBriefings.map((past) => (
             <PastBriefingCard key={past.id} briefing={past} onExplain={handleExplain} />

@@ -124,3 +124,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  aside, nav {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+}
