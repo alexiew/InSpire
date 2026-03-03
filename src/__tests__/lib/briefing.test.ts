@@ -1,23 +1,29 @@
 // ABOUTME: Tests for intelligence briefing data gathering and prompt construction.
 // ABOUTME: Verifies topic velocity computation, prompt structure, and briefing storage.
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync } from "fs";
 import path from "path";
 import os from "os";
 import { closeDb } from "@/lib/db";
+
+vi.mock("@/lib/claude", () => ({
+  callClaude: vi.fn(),
+}));
 
 let tmpDir: string;
 
 beforeEach(() => {
   tmpDir = mkdtempSync(path.join(os.tmpdir(), "inspire-test-"));
   process.env.INSPIRE_DATA_DIR = tmpDir;
+  vi.clearAllMocks();
 });
 
 afterEach(() => {
   closeDb();
   rmSync(tmpDir, { recursive: true, force: true });
   delete process.env.INSPIRE_DATA_DIR;
+  vi.restoreAllMocks();
 });
 
 async function loadModules() {
@@ -167,5 +173,102 @@ describe("saveBriefing / getLatestBriefing", () => {
     const latest = briefing.getLatestBriefing();
     expect(latest!.content).toBe("Second briefing");
     expect(latest!.id).toBe(second.id);
+  });
+});
+
+describe("generateBriefing", () => {
+  async function setup() {
+    const { callClaude } = await import("@/lib/claude");
+    const content = await import("@/lib/content");
+    const topics = await import("@/lib/topics");
+    const briefing = await import("@/lib/briefing");
+    return {
+      callClaude: callClaude as ReturnType<typeof vi.fn>,
+      content,
+      topics,
+      briefing,
+    };
+  }
+
+  it("generates a first briefing from accepted content", async () => {
+    const { callClaude, content, briefing } = await setup();
+    callClaude.mockResolvedValue("## Headline\nBig insight.");
+
+    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c1.id, {
+      title: "Video A", author: "Auth A", summary: "Summary A",
+      topics: ["longevity"], status: "accepted",
+    });
+
+    const result = await briefing.generateBriefing();
+
+    expect(callClaude).toHaveBeenCalledOnce();
+    expect(result.content).toBe("## Headline\nBig insight.");
+    expect(result.contentIds).toContain(c1.id);
+    expect(result.topicSnapshot.length).toBeGreaterThan(0);
+  });
+
+  it("uses incremental mode when previous briefing exists", async () => {
+    const { callClaude, content, briefing } = await setup();
+    callClaude.mockResolvedValue("First briefing.");
+
+    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c1.id, {
+      title: "Video A", author: "Auth A", summary: "Summary A",
+      topics: ["longevity"], status: "accepted",
+    });
+
+    await briefing.generateBriefing();
+
+    // Add new content
+    callClaude.mockResolvedValue("Updated briefing.");
+    const c2 = content.createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    content.updateContent(c2.id, {
+      title: "Video B", author: "Auth B", summary: "Summary B",
+      topics: ["longevity"], status: "accepted",
+    });
+
+    const result = await briefing.generateBriefing();
+
+    expect(callClaude).toHaveBeenCalledTimes(2);
+    const prompt = callClaude.mock.calls[1][0];
+    expect(prompt).toContain("First briefing.");
+    expect(result.content).toBe("Updated briefing.");
+  });
+
+  it("throws when no accepted content exists", async () => {
+    const { briefing } = await setup();
+    await expect(briefing.generateBriefing()).rejects.toThrow("No accepted content");
+  });
+
+  it("throws when no new content since last briefing", async () => {
+    const { callClaude, content, briefing } = await setup();
+    callClaude.mockResolvedValue("First briefing.");
+
+    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c1.id, {
+      title: "Video A", author: "Auth A", summary: "Summary A",
+      topics: ["longevity"], status: "accepted",
+    });
+
+    await briefing.generateBriefing();
+
+    await expect(briefing.generateBriefing()).rejects.toThrow("No new content since last briefing");
+  });
+
+  it("stores content IDs for incremental detection", async () => {
+    const { callClaude, content, briefing } = await setup();
+    callClaude.mockResolvedValue("Briefing result.");
+
+    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c1.id, {
+      title: "Video A", author: "Auth A", summary: "Summary A",
+      topics: ["longevity"], status: "accepted",
+    });
+
+    await briefing.generateBriefing();
+
+    const latest = briefing.getLatestBriefing();
+    expect(latest!.contentIds).toContain(c1.id);
   });
 });

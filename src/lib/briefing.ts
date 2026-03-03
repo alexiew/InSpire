@@ -1,7 +1,9 @@
 // ABOUTME: Intelligence briefing generation for the Newsroom dashboard.
 // ABOUTME: Computes topic velocity, builds prompts, and stores briefings in SQLite.
 
+import { callClaude } from "./claude";
 import { getDb } from "./db";
+import { getContent, listLibrary } from "./content";
 import { listTopics } from "./topics";
 import type { SynthesisInput } from "./synthesize";
 
@@ -150,4 +152,49 @@ export function saveBriefing(
     .get(result.lastInsertRowid) as BriefingRow;
 
   return rowToBriefing(row);
+}
+
+export async function generateBriefing(): Promise<Briefing> {
+  const allAccepted = listLibrary();
+  if (allAccepted.length === 0) {
+    throw new Error("No accepted content in the knowledge base");
+  }
+
+  const allContentIds = allAccepted.map((c) => c.id);
+  const previous = getLatestBriefing();
+  const previousContentIds = previous?.contentIds ?? [];
+
+  const previousSet = new Set(previousContentIds);
+  const newContentIds = allContentIds.filter((id) => !previousSet.has(id));
+
+  if (previous && newContentIds.length === 0) {
+    throw new Error("No new content since last briefing");
+  }
+
+  const velocities = getTopicVelocities(previousContentIds);
+
+  // Gather recent content summaries (new items only)
+  const recentItems: SynthesisInput[] = newContentIds
+    .map((id) => {
+      const item = getContent(id);
+      if (!item) return undefined;
+      return { title: item.title, author: item.author, summary: item.summary, claims: item.claims };
+    })
+    .filter((x): x is SynthesisInput => !!x);
+
+  // Gather topic syntheses for topics with new content
+  const topics = listTopics();
+  const topicSyntheses = topics
+    .filter((t) => t.synthesis)
+    .map((t) => ({ name: t.name, synthesis: t.synthesis! }));
+
+  const prompt = buildBriefingPrompt(
+    velocities,
+    recentItems,
+    topicSyntheses,
+    previous?.content
+  );
+
+  const content = await callClaude(prompt);
+  return saveBriefing(content, velocities, allContentIds);
 }
