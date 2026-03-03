@@ -184,17 +184,25 @@ export default function NewsroomPage() {
         </div>
       </div>
 
-      {(displayTopics.length > 0 || displayPeople.length > 0) && (
-        <div className="flex gap-2 overflow-x-auto pb-2 print:hidden">
-          {displayTopics.map((v) => (
-            <VelocityCard key={`t-${v.slug}`} item={v} href={`/topics/${v.slug}`} />
-          ))}
-          {displayTopics.length > 0 && displayPeople.length > 0 && (
-            <div className="w-px bg-border shrink-0 my-1" />
-          )}
-          {displayPeople.map((v) => (
-            <VelocityCard key={`p-${v.slug}`} item={v} href={`/people/${v.slug}`} />
-          ))}
+      {displayTopics.length > 0 && (
+        <div className="space-y-1 print:hidden">
+          <span className="text-xs font-medium text-muted-foreground">Topics</span>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {displayTopics.map((v) => (
+              <VelocityCard key={`t-${v.slug}`} item={v} href={`/topics/${v.slug}`} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {displayPeople.length > 0 && (
+        <div className="space-y-1 print:hidden">
+          <span className="text-xs font-medium text-muted-foreground">People</span>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {displayPeople.map((v) => (
+              <VelocityCard key={`p-${v.slug}`} item={v} href={`/people/${v.slug}`} />
+            ))}
+          </div>
         </div>
       )}
 
