@@ -68,6 +68,6 @@ export async function synthesizeTopic(slug: string): Promise<string> {
 
   const prompt = buildSynthesisPrompt(topic.name, items);
   const synthesis = await callClaude(prompt);
-  updateTopicSynthesis(slug, synthesis);
+  updateTopicSynthesis(slug, synthesis, topic.contentIds);
   return synthesis;
 }

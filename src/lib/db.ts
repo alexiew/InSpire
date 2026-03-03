@@ -101,6 +101,7 @@ function initSchema(db: Database.Database): void {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       topic_slug TEXT NOT NULL REFERENCES topics(slug) ON DELETE CASCADE,
       synthesis TEXT NOT NULL,
+      content_ids TEXT NOT NULL DEFAULT '[]',
       created_at TEXT NOT NULL
     );
 
@@ -133,6 +134,11 @@ function initSchema(db: Database.Database): void {
   const subColumns = db.prepare("PRAGMA table_info(subscriptions)").all() as { name: string }[];
   if (!subColumns.some((c) => c.name === "extraction_hints")) {
     db.exec("ALTER TABLE subscriptions ADD COLUMN extraction_hints TEXT NOT NULL DEFAULT ''");
+  }
+
+  const synthHistColumns = db.prepare("PRAGMA table_info(synthesis_history)").all() as { name: string }[];
+  if (!synthHistColumns.some((c) => c.name === "content_ids")) {
+    db.exec("ALTER TABLE synthesis_history ADD COLUMN content_ids TEXT NOT NULL DEFAULT '[]'");
   }
 
   // One-time migration: 'ready' → 'accepted' for pre-lifecycle content.

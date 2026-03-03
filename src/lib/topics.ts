@@ -67,7 +67,8 @@ export function createTopic(name: string): Topic {
 
 export function updateTopicSynthesis(
   slug: string,
-  synthesis: string
+  synthesis: string,
+  contentIds: string[]
 ): Topic | undefined {
   const db = getDb();
   const now = new Date().toISOString();
@@ -81,13 +82,23 @@ export function updateTopicSynthesis(
     slug
   );
 
-  db.prepare("INSERT INTO synthesis_history (topic_slug, synthesis, created_at) VALUES (?, ?, ?)").run(
+  db.prepare("INSERT INTO synthesis_history (topic_slug, synthesis, content_ids, created_at) VALUES (?, ?, ?, ?)").run(
     slug,
     synthesis,
+    JSON.stringify(contentIds),
     now
   );
 
   return getTopic(slug)!;
+}
+
+export function getLatestSynthesisRecord(slug: string): { synthesis: string; contentIds: string[] } | undefined {
+  const db = getDb();
+  const row = db
+    .prepare("SELECT synthesis, content_ids FROM synthesis_history WHERE topic_slug = ? ORDER BY id DESC LIMIT 1")
+    .get(slug) as { synthesis: string; content_ids: string } | undefined;
+  if (!row) return undefined;
+  return { synthesis: row.synthesis, contentIds: JSON.parse(row.content_ids) };
 }
 
 export function deleteTopic(slug: string): boolean {

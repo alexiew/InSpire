@@ -244,10 +244,65 @@ describe("updateTopicSynthesis", () => {
     updateContent(c1.id, { topics: ["longevity"], status: "accepted" });
 
     rebuildTopicIndex();
-    updateTopicSynthesis("longevity", "These sources agree on X.");
+    updateTopicSynthesis("longevity", "These sources agree on X.", [c1.id]);
 
     const topic = getTopic("longevity");
     expect(topic!.synthesis).toBe("These sources agree on X.");
     expect(topic!.synthesizedAt).toBeTruthy();
+  });
+
+  it("stores content IDs in synthesis history", async () => {
+    const {
+      createContent,
+      updateContent,
+      rebuildTopicIndex,
+      updateTopicSynthesis,
+      getLatestSynthesisRecord,
+    } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    updateContent(c1.id, { topics: ["sleep"], status: "accepted" });
+    updateContent(c2.id, { topics: ["sleep"], status: "accepted" });
+
+    rebuildTopicIndex();
+    updateTopicSynthesis("sleep", "Synthesis text.", [c1.id, c2.id]);
+
+    const record = getLatestSynthesisRecord("sleep");
+    expect(record).toBeDefined();
+    expect(record!.synthesis).toBe("Synthesis text.");
+    expect(record!.contentIds).toEqual([c1.id, c2.id]);
+  });
+});
+
+describe("getLatestSynthesisRecord", () => {
+  it("returns the most recent synthesis record", async () => {
+    const {
+      createContent,
+      updateContent,
+      rebuildTopicIndex,
+      updateTopicSynthesis,
+      getLatestSynthesisRecord,
+    } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    updateContent(c1.id, { topics: ["sleep"], status: "accepted" });
+    updateContent(c2.id, { topics: ["sleep"], status: "accepted" });
+
+    rebuildTopicIndex();
+    updateTopicSynthesis("sleep", "First synthesis.", [c1.id]);
+    updateTopicSynthesis("sleep", "Second synthesis.", [c1.id, c2.id]);
+
+    const record = getLatestSynthesisRecord("sleep");
+    expect(record!.synthesis).toBe("Second synthesis.");
+    expect(record!.contentIds).toEqual([c1.id, c2.id]);
+  });
+
+  it("returns undefined for topic with no synthesis history", async () => {
+    const { createTopic, getLatestSynthesisRecord } = await loadModules();
+
+    createTopic("empty-topic");
+    expect(getLatestSynthesisRecord("empty-topic")).toBeUndefined();
   });
 });
