@@ -39,6 +39,8 @@ interface ContentRow {
   summary: string;
   claims: string;
   extraction_hints: string;
+  pending_topics: string;
+  pending_people: string;
   status: string;
   error: string | null;
   created_at: string;
@@ -52,17 +54,30 @@ function generateId(): string {
 function rowToContentItem(row: ContentRow): ContentItem {
   const db = getDb();
 
-  const topicRows = db
-    .prepare("SELECT topic_slug FROM content_topics WHERE content_id = ?")
-    .all(row.id) as { topic_slug: string }[];
+  let topics: string[];
+  let people: string[];
 
-  const peopleRows = db
-    .prepare(
-      `SELECT p.name FROM content_people cp
-       JOIN people p ON p.id = cp.person_id
-       WHERE cp.content_id = ?`
-    )
-    .all(row.id) as { name: string }[];
+  if (row.status === "accepted") {
+    const topicRows = db
+      .prepare("SELECT topic_slug FROM content_topics WHERE content_id = ?")
+      .all(row.id) as { topic_slug: string }[];
+    topics = topicRows.map((r) => r.topic_slug).map((slug) => {
+      const topic = db.prepare("SELECT name FROM topics WHERE slug = ?").get(slug) as { name: string } | undefined;
+      return topic ? topic.name : slug;
+    });
+
+    const peopleRows = db
+      .prepare(
+        `SELECT p.name FROM content_people cp
+         JOIN people p ON p.id = cp.person_id
+         WHERE cp.content_id = ?`
+      )
+      .all(row.id) as { name: string }[];
+    people = peopleRows.map((r) => r.name);
+  } else {
+    topics = JSON.parse(row.pending_topics);
+    people = JSON.parse(row.pending_people);
+  }
 
   return {
     id: row.id,
@@ -75,12 +90,9 @@ function rowToContentItem(row: ContentRow): ContentItem {
     transcript: row.transcript,
     summary: row.summary,
     extractionHints: row.extraction_hints,
-    topics: topicRows.map((r) => r.topic_slug).map((slug) => {
-      const topic = db.prepare("SELECT name FROM topics WHERE slug = ?").get(slug) as { name: string } | undefined;
-      return topic ? topic.name : slug;
-    }),
+    topics,
     claims: JSON.parse(row.claims),
-    people: peopleRows.map((r) => r.name),
+    people,
     status: row.status as ContentStatus,
     error: row.error ?? undefined,
     createdAt: row.created_at,
@@ -219,11 +231,78 @@ export function updateContent(
     values.push(id);
     db.prepare(`UPDATE content SET ${setClauses.join(", ")} WHERE id = ?`).run(...values);
 
+    const effectiveStatus = (updates.status as string) ?? existing.status;
+    const wasAccepted = existing.status === "accepted";
+    const nowAccepted = effectiveStatus === "accepted";
+
+    // Handle topics: join table only for accepted content
     if (updates.topics !== undefined) {
-      syncContentTopics(id, updates.topics);
+      if (nowAccepted) {
+        syncContentTopics(id, updates.topics);
+        db.prepare("UPDATE content SET pending_topics = '[]' WHERE id = ?").run(id);
+      } else {
+        db.prepare("UPDATE content SET pending_topics = ? WHERE id = ?").run(
+          JSON.stringify(updates.topics), id
+        );
+      }
     }
+
+    // Handle people: join table only for accepted content
     if (updates.people !== undefined) {
-      syncContentPeople(id, updates.people);
+      if (nowAccepted) {
+        syncContentPeople(id, updates.people);
+        db.prepare("UPDATE content SET pending_people = '[]' WHERE id = ?").run(id);
+      } else {
+        db.prepare("UPDATE content SET pending_people = ? WHERE id = ?").run(
+          JSON.stringify(updates.people), id
+        );
+      }
+    }
+
+    // Promote pending data on acceptance (when topics/people aren't explicitly set)
+    if (nowAccepted && !wasAccepted) {
+      if (updates.topics === undefined) {
+        const pending = JSON.parse(existing.pending_topics) as string[];
+        if (pending.length > 0) {
+          syncContentTopics(id, pending);
+          db.prepare("UPDATE content SET pending_topics = '[]' WHERE id = ?").run(id);
+        }
+      }
+      if (updates.people === undefined) {
+        const pending = JSON.parse(existing.pending_people) as string[];
+        if (pending.length > 0) {
+          syncContentPeople(id, pending);
+          db.prepare("UPDATE content SET pending_people = '[]' WHERE id = ?").run(id);
+        }
+      }
+    }
+
+    // Demote on discard: save join data back to pending, remove from join tables
+    if (!nowAccepted && wasAccepted) {
+      const topicRows = db
+        .prepare("SELECT topic_slug FROM content_topics WHERE content_id = ?")
+        .all(id) as { topic_slug: string }[];
+      const topicNames = topicRows.map((r) => {
+        const t = db.prepare("SELECT name FROM topics WHERE slug = ?").get(r.topic_slug) as { name: string } | undefined;
+        return t ? t.name : r.topic_slug;
+      });
+      db.prepare("UPDATE content SET pending_topics = ? WHERE id = ?").run(
+        JSON.stringify(topicNames), id
+      );
+
+      const peopleRows = db
+        .prepare(
+          `SELECT p.name FROM content_people cp
+           JOIN people p ON p.id = cp.person_id
+           WHERE cp.content_id = ?`
+        )
+        .all(id) as { name: string }[];
+      db.prepare("UPDATE content SET pending_people = ? WHERE id = ?").run(
+        JSON.stringify(peopleRows.map(r => r.name)), id
+      );
+
+      syncContentTopics(id, []);
+      syncContentPeople(id, []);
     }
   });
 

@@ -35,6 +35,47 @@ export function closeDb(): void {
   }
 }
 
+function migrateNonAcceptedTopicsAndPeople(db: Database.Database): void {
+  // Move join table data for non-accepted content into pending columns
+  const nonAccepted = db.prepare(
+    "SELECT id FROM content WHERE status != 'accepted'"
+  ).all() as { id: string }[];
+
+  for (const { id } of nonAccepted) {
+    const topicNames = (db.prepare(
+      `SELECT t.name FROM content_topics ct
+       JOIN topics t ON t.slug = ct.topic_slug
+       WHERE ct.content_id = ?`
+    ).all(id) as { name: string }[]).map(r => r.name);
+
+    const peopleNames = (db.prepare(
+      `SELECT p.name FROM content_people cp
+       JOIN people p ON p.id = cp.person_id
+       WHERE cp.content_id = ?`
+    ).all(id) as { name: string }[]).map(r => r.name);
+
+    if (topicNames.length > 0) {
+      db.prepare("UPDATE content SET pending_topics = ? WHERE id = ?").run(
+        JSON.stringify(topicNames), id
+      );
+      db.prepare("DELETE FROM content_topics WHERE content_id = ?").run(id);
+    }
+
+    if (peopleNames.length > 0) {
+      db.prepare("UPDATE content SET pending_people = ? WHERE id = ?").run(
+        JSON.stringify(peopleNames), id
+      );
+      db.prepare("DELETE FROM content_people WHERE content_id = ?").run(id);
+    }
+  }
+
+  // Clean up orphaned topics (no join table refs, no synthesis)
+  db.prepare(
+    `DELETE FROM topics WHERE slug NOT IN (SELECT topic_slug FROM content_topics)
+     AND synthesis IS NULL`
+  ).run();
+}
+
 function initSchema(db: Database.Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS content (
@@ -49,6 +90,8 @@ function initSchema(db: Database.Database): void {
       summary TEXT NOT NULL DEFAULT '',
       claims TEXT NOT NULL DEFAULT '[]',
       extraction_hints TEXT NOT NULL DEFAULT '',
+      pending_topics TEXT NOT NULL DEFAULT '[]',
+      pending_people TEXT NOT NULL DEFAULT '[]',
       status TEXT NOT NULL DEFAULT 'processing',
       error TEXT,
       created_at TEXT NOT NULL,
@@ -129,6 +172,11 @@ function initSchema(db: Database.Database): void {
   const contentColumns = db.prepare("PRAGMA table_info(content)").all() as { name: string }[];
   if (!contentColumns.some((c) => c.name === "extraction_hints")) {
     db.exec("ALTER TABLE content ADD COLUMN extraction_hints TEXT NOT NULL DEFAULT ''");
+  }
+  if (!contentColumns.some((c) => c.name === "pending_topics")) {
+    db.exec("ALTER TABLE content ADD COLUMN pending_topics TEXT NOT NULL DEFAULT '[]'");
+    db.exec("ALTER TABLE content ADD COLUMN pending_people TEXT NOT NULL DEFAULT '[]'");
+    migrateNonAcceptedTopicsAndPeople(db);
   }
 
   const subColumns = db.prepare("PRAGMA table_info(subscriptions)").all() as { name: string }[];

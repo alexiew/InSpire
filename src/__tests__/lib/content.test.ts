@@ -112,15 +112,15 @@ describe("orphan topic cleanup", () => {
     const c = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
     content.updateContent(c.id, {
       topics: ["longevity", "vitamin D", "sleep"],
-      status: "ready",
+      status: "accepted",
     });
 
-    // All three topics should exist
+    // All three topics should exist in knowledge base
     expect(topics.getTopic("longevity")).toBeDefined();
     expect(topics.getTopic("vitamin-d")).toBeDefined();
     expect(topics.getTopic("sleep")).toBeDefined();
 
-    // Remove "vitamin D" and "sleep" during review
+    // Remove "vitamin D" and "sleep"
     content.updateContent(c.id, { topics: ["longevity"] });
 
     // Orphaned topics should be cleaned up
@@ -153,13 +153,143 @@ describe("orphan topic cleanup", () => {
     content.updateContent(c1.id, { topics: ["longevity", "sleep"], status: "accepted" });
 
     const c2 = content.createContent("https://youtube.com/watch?v=b", "b", "youtube");
-    content.updateContent(c2.id, { topics: ["longevity", "vitamin D"], status: "ready" });
+    content.updateContent(c2.id, { topics: ["longevity", "vitamin D"], status: "accepted" });
 
     // Remove "longevity" from c2 — but c1 still has it
     content.updateContent(c2.id, { topics: ["vitamin D"] });
 
     expect(topics.getTopic("longevity")).toBeDefined();
     expect(topics.getTopic("vitamin-d")).toBeDefined();
+  });
+});
+
+describe("topic/people sequencing", () => {
+  it("does not write topics to knowledge base for non-accepted content", async () => {
+    const content = await loadModule();
+    const topics = await import("@/lib/topics");
+
+    const c = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c.id, {
+      topics: ["longevity", "sleep"],
+      people: ["Dr. Smith"],
+      status: "ready",
+    });
+
+    // Topics should be on the content item
+    const item = content.getContent(c.id);
+    expect(item!.topics).toEqual(["longevity", "sleep"]);
+    expect(item!.people).toEqual(["Dr. Smith"]);
+
+    // But NOT in the knowledge base
+    expect(topics.getTopic("longevity")).toBeUndefined();
+    expect(topics.getTopic("sleep")).toBeUndefined();
+    expect(topics.listTopics()).toHaveLength(0);
+  });
+
+  it("promotes topics to knowledge base on acceptance", async () => {
+    const content = await loadModule();
+    const topics = await import("@/lib/topics");
+
+    const c = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c.id, {
+      topics: ["longevity", "sleep"],
+      status: "ready",
+    });
+
+    // Not in knowledge base yet
+    expect(topics.getTopic("longevity")).toBeUndefined();
+
+    // Accept the content
+    content.updateContent(c.id, { status: "accepted" });
+
+    // Now topics should be in the knowledge base
+    expect(topics.getTopic("longevity")).toBeDefined();
+    expect(topics.getTopic("longevity")!.contentIds).toContain(c.id);
+    expect(topics.getTopic("sleep")).toBeDefined();
+  });
+
+  it("does not promote topics on discard", async () => {
+    const content = await loadModule();
+    const topics = await import("@/lib/topics");
+
+    const c = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c.id, {
+      topics: ["longevity"],
+      status: "ready",
+    });
+
+    content.updateContent(c.id, { status: "discarded" });
+
+    expect(topics.getTopic("longevity")).toBeUndefined();
+  });
+
+  it("removes topics from knowledge base when accepted content is discarded", async () => {
+    const content = await loadModule();
+    const topics = await import("@/lib/topics");
+
+    const c = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c.id, {
+      topics: ["longevity"],
+      status: "ready",
+    });
+    content.updateContent(c.id, { status: "accepted" });
+    expect(topics.getTopic("longevity")).toBeDefined();
+
+    // Discard it
+    content.updateContent(c.id, { status: "discarded" });
+
+    // Topics removed from knowledge base
+    expect(topics.listTopics()).toHaveLength(0);
+
+    // But still on the content item
+    const item = content.getContent(c.id);
+    expect(item!.topics).toEqual(["longevity"]);
+  });
+
+  it("restores topics to knowledge base when discarded content is re-accepted", async () => {
+    const content = await loadModule();
+    const topics = await import("@/lib/topics");
+
+    const c = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c.id, {
+      topics: ["longevity"],
+      status: "ready",
+    });
+    content.updateContent(c.id, { status: "accepted" });
+    content.updateContent(c.id, { status: "discarded" });
+
+    expect(topics.getTopic("longevity")).toBeUndefined();
+
+    // Re-accept
+    content.updateContent(c.id, { status: "accepted" });
+    expect(topics.getTopic("longevity")).toBeDefined();
+    expect(topics.getTopic("longevity")!.contentIds).toContain(c.id);
+  });
+
+  it("topic editing during review stays in pending state", async () => {
+    const content = await loadModule();
+    const topics = await import("@/lib/topics");
+
+    const c = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c.id, {
+      topics: ["longevity", "sleep"],
+      status: "ready",
+    });
+
+    // Edit topics during review
+    content.updateContent(c.id, { topics: ["longevity", "metabolism"] });
+
+    const item = content.getContent(c.id);
+    expect(item!.topics).toEqual(["longevity", "metabolism"]);
+
+    // Still not in knowledge base
+    expect(topics.listTopics()).toHaveLength(0);
+
+    // Accept — only the current topics get promoted
+    content.updateContent(c.id, { status: "accepted" });
+    expect(topics.getTopic("longevity")).toBeDefined();
+    expect(topics.getTopic("metabolism")).toBeDefined();
+    expect(topics.getTopic("sleep")).toBeUndefined();
   });
 });
 
