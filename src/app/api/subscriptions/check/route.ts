@@ -1,13 +1,13 @@
 // ABOUTME: API route for manually triggering subscription checks.
-// ABOUTME: Checks all due subscriptions and returns the number of new items ingested.
+// ABOUTME: Checks all subscriptions regardless of schedule and returns new items count.
 
 import { NextResponse } from "next/server";
-import { getDueSubscriptions, checkSubscription } from "@/lib/subscriptions";
+import { listSubscriptions, checkSubscription } from "@/lib/subscriptions";
 
 export async function POST() {
-  const due = getDueSubscriptions();
+  const subs = listSubscriptions();
   const results = await Promise.allSettled(
-    due.map((sub) => checkSubscription(sub.id))
+    subs.map((sub) => checkSubscription(sub.id))
   );
 
   const totalIngested = results.reduce((sum, r) => {
@@ -16,7 +16,7 @@ export async function POST() {
   }, 0);
 
   return NextResponse.json({
-    checked: due.length,
+    checked: subs.length,
     ingested: totalIngested,
   });
 }
