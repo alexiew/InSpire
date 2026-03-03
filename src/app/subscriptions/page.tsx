@@ -15,6 +15,7 @@ export default function SubscriptionsPage() {
   const [url, setUrl] = useState("");
   const [subscribing, setSubscribing] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState("");
   const [error, setError] = useState("");
 
   async function handleSubscribe(e: React.FormEvent) {
@@ -47,7 +48,20 @@ export default function SubscriptionsPage() {
 
   async function handleCheckNow() {
     setChecking(true);
-    await fetch("/api/subscriptions/check", { method: "POST" });
+    setCheckResult("");
+    try {
+      const res = await fetch("/api/subscriptions/check", { method: "POST" });
+      const data = await res.json();
+      if (data.ingested > 0) {
+        setCheckResult(`Found ${data.ingested} new item${data.ingested === 1 ? "" : "s"}`);
+      } else if (data.checked > 0) {
+        setCheckResult("No new content found");
+      } else {
+        setCheckResult("All subscriptions are up to date");
+      }
+    } catch {
+      setCheckResult("Check failed — see console for details");
+    }
     setChecking(false);
     mutate();
   }
@@ -81,7 +95,10 @@ export default function SubscriptionsPage() {
       )}
 
       {hasSubs && (
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-3">
+          {checkResult && (
+            <p className="text-sm text-muted-foreground">{checkResult}</p>
+          )}
           <Button
             variant="outline"
             size="sm"
