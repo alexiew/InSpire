@@ -5,7 +5,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useJournal } from "@/hooks/use-journal";
 
@@ -105,21 +105,32 @@ export default function JournalPage() {
               className="rounded-md border p-4 space-y-2"
             >
               {editingId === entry.id ? (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <textarea
                     ref={textareaRef}
                     className="w-full rounded border bg-background px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-primary"
                     rows={4}
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
-                    onBlur={saveEdit}
                     onKeyDown={(e) => {
-                      if (e.key === "Escape") {
-                        setEditingId(null);
-                      }
+                      if (e.key === "Escape") setEditingId(null);
                     }}
                   />
-                  <p className="text-xs text-muted-foreground">Esc to cancel</p>
+                  <div className="flex gap-2">
+                    <Button size="sm" className="h-7 text-xs gap-1" onClick={saveEdit}>
+                      <Check className="h-3 w-3" />
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => setEditingId(null)}
+                    >
+                      <X className="h-3 w-3" />
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <blockquote className="text-sm border-l-2 border-primary pl-3 italic whitespace-pre-wrap">
