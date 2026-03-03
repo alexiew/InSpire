@@ -6,13 +6,21 @@ import {
   getLatestBriefing,
   getTopicVelocities,
   generateBriefing,
+  listBriefings,
 } from "@/lib/briefing";
 
 export async function GET() {
-  const briefing = getLatestBriefing() ?? null;
-  const previousContentIds = briefing?.contentIds ?? [];
-  const velocities = getTopicVelocities(previousContentIds);
-  return NextResponse.json({ briefing, velocities });
+  const briefings = listBriefings();
+  const latest = briefings[0] ?? null;
+
+  // Velocity relative to the most recent briefing.
+  // Before any briefing exists, no baseline — show all topics with newCount = 0.
+  let velocities = getTopicVelocities(latest?.contentIds ?? []);
+  if (!latest) {
+    velocities = velocities.map((v) => ({ ...v, newCount: 0 }));
+  }
+
+  return NextResponse.json({ briefing: latest, velocities, history: briefings });
 }
 
 export async function POST() {

@@ -176,6 +176,25 @@ describe("saveBriefing / getLatestBriefing", () => {
   });
 });
 
+describe("listBriefings", () => {
+  it("returns all briefings newest first", async () => {
+    const { briefing } = await loadModules();
+
+    const first = briefing.saveBriefing("First", [], ["id1"]);
+    const second = briefing.saveBriefing("Second", [], ["id1", "id2"]);
+
+    const all = briefing.listBriefings();
+    expect(all).toHaveLength(2);
+    expect(all[0].id).toBe(second.id);
+    expect(all[1].id).toBe(first.id);
+  });
+
+  it("returns empty array when no briefings exist", async () => {
+    const { briefing } = await loadModules();
+    expect(briefing.listBriefings()).toEqual([]);
+  });
+});
+
 describe("generateBriefing", () => {
   async function setup() {
     const { callClaude } = await import("@/lib/claude");

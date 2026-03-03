@@ -133,6 +133,14 @@ export function getLatestBriefing(): Briefing | undefined {
   return rowToBriefing(row);
 }
 
+export function listBriefings(): Briefing[] {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT * FROM briefings ORDER BY id DESC")
+    .all() as BriefingRow[];
+  return rows.map(rowToBriefing);
+}
+
 export function saveBriefing(
   content: string,
   topicSnapshot: TopicVelocity[],
