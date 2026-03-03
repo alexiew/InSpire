@@ -80,9 +80,9 @@ spaces   in it`;
 
 describe("transcriptStats", () => {
   it("counts words and estimates duration", () => {
-    const text = Array(1500).fill("word").join(" ");
+    const text = Array(2000).fill("word").join(" ");
     const stats = transcriptStats(text);
-    expect(stats.wordCount).toBe(1500);
+    expect(stats.wordCount).toBe(2000);
     expect(stats.duration).toBe("10 min");
   });
 
@@ -90,7 +90,7 @@ describe("transcriptStats", () => {
     const text = Array(15000).fill("word").join(" ");
     const stats = transcriptStats(text);
     expect(stats.wordCount).toBe(15000);
-    expect(stats.duration).toBe("1h 40min");
+    expect(stats.duration).toBe("1h 15min");
   });
 
   it("returns zero stats for empty text", () => {

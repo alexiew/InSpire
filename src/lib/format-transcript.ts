@@ -32,7 +32,7 @@ export function formatTranscript(raw: string): string {
   return paragraphs.join("\n\n");
 }
 
-const WORDS_PER_MINUTE = 150;
+const WORDS_PER_MINUTE = 200;
 
 export function transcriptStats(text: string): { wordCount: number; duration: string } {
   const trimmed = text.trim();
