@@ -54,7 +54,7 @@ function VelocityCard({ item, href }: { item: Velocity; href: string }) {
   return (
     <Link href={href}>
       <Card
-        className={`flex flex-col items-center justify-center p-3 min-w-[100px] text-center transition-colors hover:border-primary/50 ${bgClass}`}
+        className={`flex flex-col items-center justify-center p-3 w-[120px] shrink-0 text-center transition-colors hover:border-primary/50 ${bgClass}`}
       >
         <span className="text-xs font-medium truncate w-full">{item.name}</span>
         <span className={`text-sm font-bold ${textClass}`}>
