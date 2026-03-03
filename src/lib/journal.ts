@@ -89,6 +89,14 @@ export function createJournalEntry(
   return rowToEntry(row);
 }
 
+export function updateJournalNote(id: number, note: string | null): JournalEntry | null {
+  const db = getDb();
+  const result = db.prepare("UPDATE journal_entries SET note = ? WHERE id = ?").run(note, id);
+  if (result.changes === 0) return null;
+  const row = db.prepare(`${ENTRY_QUERY} WHERE j.id = ?`).get(id) as JournalRow | undefined;
+  return row ? rowToEntry(row) : null;
+}
+
 export function deleteJournalEntry(id: number): boolean {
   const db = getDb();
   const result = db.prepare("DELETE FROM journal_entries WHERE id = ?").run(id);

@@ -147,6 +147,35 @@ describe("source grouping", () => {
   });
 });
 
+describe("updateJournalNote", () => {
+  it("sets a note on an existing entry", async () => {
+    const { createJournalEntry, updateJournalNote } = await loadModules();
+
+    const entry = createJournalEntry(null, "Some highlight");
+    const updated = updateJournalNote(entry.id, "My thoughts on this");
+
+    expect(updated).not.toBeNull();
+    expect(updated!.note).toBe("My thoughts on this");
+    expect(updated!.text).toBe("Some highlight");
+  });
+
+  it("returns null for nonexistent id", async () => {
+    const { updateJournalNote } = await loadModules();
+    expect(updateJournalNote(999, "note")).toBeNull();
+  });
+
+  it("clears note when set to null", async () => {
+    const { createJournalEntry, updateJournalNote } = await loadModules();
+
+    const entry = createJournalEntry(null, "A highlight");
+    updateJournalNote(entry.id, "A note");
+    const cleared = updateJournalNote(entry.id, null);
+
+    expect(cleared).not.toBeNull();
+    expect(cleared!.note).toBeNull();
+  });
+});
+
 describe("deleteJournalEntry", () => {
   it("deletes an entry and returns true", async () => {
     const { createJournalEntry, deleteJournalEntry, listJournalEntries } =

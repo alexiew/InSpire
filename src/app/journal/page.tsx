@@ -3,10 +3,12 @@
 
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Trash2 } from "lucide-react";
+import { Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useJournal } from "@/hooks/use-journal";
+import type { JournalEntry } from "@/lib/journal";
 
 function formatDateGroup(dateStr: string): string {
   const date = new Date(dateStr);
@@ -25,6 +27,76 @@ function formatDateGroup(dateStr: string): string {
     month: "long",
     day: "numeric",
   });
+}
+
+function NoteEditor({ entry, onSaved }: { entry: JournalEntry; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(entry.note ?? "");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(draft.length, draft.length);
+    }
+  }, [editing]);
+
+  async function save() {
+    const trimmed = draft.trim();
+    await fetch(`/api/journal/${entry.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note: trimmed || null }),
+    });
+    setEditing(false);
+    onSaved();
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Escape") {
+      setDraft(entry.note ?? "");
+      setEditing(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="space-y-1">
+        <textarea
+          ref={textareaRef}
+          className="w-full rounded border bg-background px-2 py-1 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+          rows={2}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={save}
+          onKeyDown={handleKeyDown}
+          placeholder="Write a note..."
+        />
+        <p className="text-xs text-muted-foreground">Esc to cancel</p>
+      </div>
+    );
+  }
+
+  if (entry.note) {
+    return (
+      <button
+        className="text-sm text-left w-full whitespace-pre-wrap hover:bg-muted/50 rounded px-1 -mx-1 transition-colors"
+        onClick={() => { setDraft(entry.note ?? ""); setEditing(true); }}
+      >
+        {entry.note}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+      onClick={() => { setDraft(""); setEditing(true); }}
+    >
+      <Pencil className="h-3 w-3" />
+      Add note...
+    </button>
+  );
 }
 
 export default function JournalPage() {
@@ -79,6 +151,7 @@ export default function JournalPage() {
               <blockquote className="text-sm border-l-2 border-primary pl-3 italic whitespace-pre-wrap">
                 {entry.text}
               </blockquote>
+              <NoteEditor entry={entry} onSaved={() => mutate()} />
               <div className="flex items-center justify-between">
                 <div className="text-xs text-muted-foreground">
                   {entry.contentId && entry.contentTitle ? (
