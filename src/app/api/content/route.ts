@@ -1,8 +1,8 @@
 // ABOUTME: API route for listing and submitting content.
-// ABOUTME: GET returns all content, POST submits a URL for processing.
+// ABOUTME: GET returns all content, POST submits a URL or pasted transcript for processing.
 
 import { NextRequest, NextResponse } from "next/server";
-import { listContent, createContent, type SourceType } from "@/lib/content";
+import { listContent, createContent, updateContent, type SourceType } from "@/lib/content";
 import { extractVideoId } from "@/lib/youtube";
 import { processContent } from "@/lib/process-content";
 
@@ -15,10 +15,30 @@ export function GET() {
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { url } = body;
+  const { url, title, transcript } = body;
 
+  // Manual import: title + transcript, no URL needed
+  if (typeof title === "string" && title.trim() && typeof transcript === "string" && transcript.trim()) {
+    const sourceId = `manual-${Date.now()}`;
+    const item = createContent(url || "", sourceId, "blog");
+    const updates: Record<string, unknown> = {
+      title: title.trim(),
+      transcript: transcript.trim(),
+    };
+    if (Array.isArray(body.topics) && body.topics.length > 0) {
+      updates.topics = body.topics;
+    }
+    if (typeof body.extractionHints === "string" && body.extractionHints.trim()) {
+      updates.extractionHints = body.extractionHints.trim();
+    }
+    updateContent(item.id, updates);
+    processContent(item.id).catch(() => {});
+    return NextResponse.json(item, { status: 201 });
+  }
+
+  // URL-based import
   if (!url || typeof url !== "string") {
-    return NextResponse.json({ error: "url is required" }, { status: 400 });
+    return NextResponse.json({ error: "url or title+transcript is required" }, { status: 400 });
   }
 
   let sourceId: string;
@@ -29,7 +49,6 @@ export async function POST(request: NextRequest) {
     sourceId = videoId;
     sourceType = "youtube";
   } else {
-    // Non-YouTube URL: detect podcast (audio file) vs blog article
     const audioExtensions = /\.(mp3|m4a|wav|ogg|aac|opus)(\?|$)/i;
     sourceType = audioExtensions.test(url) ? "podcast" : "blog";
     sourceId = url;
@@ -37,7 +56,6 @@ export async function POST(request: NextRequest) {
 
   const item = createContent(url, sourceId, sourceType);
 
-  // Pre-assign topics and/or extraction hints if provided
   const updates: Record<string, unknown> = {};
   if (Array.isArray(body.topics) && body.topics.length > 0) {
     updates.topics = body.topics;
@@ -46,11 +64,9 @@ export async function POST(request: NextRequest) {
     updates.extractionHints = body.extractionHints.trim();
   }
   if (Object.keys(updates).length > 0) {
-    const { updateContent } = await import("@/lib/content");
     updateContent(item.id, updates);
   }
 
-  // Fire-and-forget processing
   processContent(item.id).catch(() => {});
 
   return NextResponse.json(item, { status: 201 });

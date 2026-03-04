@@ -25,16 +25,18 @@ export async function processContent(id: string): Promise<void> {
       });
     }
 
-    // Fetch transcript / article text
-    let transcript: string;
-    if (item.sourceType === "podcast") {
-      transcript = await fetchPodcastTranscript(item.url);
-    } else if (item.sourceType === "blog") {
-      transcript = await fetchArticleText(item.url);
-    } else {
-      transcript = await fetchTranscript(item.sourceId);
+    // Fetch transcript / article text (skip if already provided)
+    let transcript = item.transcript;
+    if (!transcript) {
+      if (item.sourceType === "podcast") {
+        transcript = await fetchPodcastTranscript(item.url);
+      } else if (item.sourceType === "blog") {
+        transcript = await fetchArticleText(item.url);
+      } else {
+        transcript = await fetchTranscript(item.sourceId);
+      }
+      updateContent(id, { transcript });
     }
-    updateContent(id, { transcript });
 
     // Extract structured knowledge, merging with any pre-assigned topics
     const current = getContent(id);
