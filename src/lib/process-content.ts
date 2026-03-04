@@ -4,6 +4,7 @@
 import { getContent, updateContent } from "./content";
 import { fetchMetadata, fetchTranscript } from "./youtube";
 import { fetchPodcastTranscript } from "./podcast";
+import { fetchArticleText } from "./blog";
 import { extract, filterAuthor } from "./extract";
 import { listTopics, rebuildTopicIndex } from "./topics";
 
@@ -24,10 +25,15 @@ export async function processContent(id: string): Promise<void> {
       });
     }
 
-    // Fetch transcript
-    const transcript = item.sourceType === "podcast"
-      ? await fetchPodcastTranscript(item.url)
-      : await fetchTranscript(item.sourceId);
+    // Fetch transcript / article text
+    let transcript: string;
+    if (item.sourceType === "podcast") {
+      transcript = await fetchPodcastTranscript(item.url);
+    } else if (item.sourceType === "blog") {
+      transcript = await fetchArticleText(item.url);
+    } else {
+      transcript = await fetchTranscript(item.sourceId);
+    }
     updateContent(id, { transcript });
 
     // Extract structured knowledge, merging with any pre-assigned topics

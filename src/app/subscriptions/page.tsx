@@ -1,5 +1,5 @@
 // ABOUTME: Subscriptions management page.
-// ABOUTME: Subscribe to YouTube channels, view subscriptions, and trigger manual checks.
+// ABOUTME: Subscribe to YouTube channels, podcast feeds, or blog feeds and trigger manual checks.
 
 "use client";
 
@@ -44,7 +44,7 @@ function SubscriptionCard({
         <div>
           <CardTitle className="text-base">{sub.name}</CardTitle>
           <CardDescription>
-            {sub.sourceType === "podcast" ? "Podcast" : "YouTube"} · {formatLastChecked(sub.lastCheckedAt)}
+            {sub.sourceType === "podcast" ? "Podcast" : sub.sourceType === "blog" ? "Blog" : "YouTube"} · {formatLastChecked(sub.lastCheckedAt)}
           </CardDescription>
         </div>
         <div className="flex gap-1">
@@ -181,7 +181,7 @@ export default function SubscriptionsPage() {
       <form onSubmit={handleSubscribe} className="space-y-2">
         <div className="flex gap-2">
           <Input
-            placeholder="YouTube channel or podcast RSS feed URL"
+            placeholder="YouTube channel, podcast, or blog RSS feed URL"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             className="flex-1"
@@ -203,7 +203,7 @@ export default function SubscriptionsPage() {
               value={maxItems}
               onChange={(e) => setMaxItems(e.target.value)}
               className="w-16 h-9 text-sm text-center"
-              title="Number of videos to import"
+              title="Number of items to import"
             />
           </div>
           <Button type="submit" disabled={!url.trim() || subscribing}>
@@ -261,7 +261,7 @@ export default function SubscriptionsPage() {
         </div>
       ) : subscriptions ? (
         <p className="text-center text-muted-foreground py-12">
-          No subscriptions yet. Paste a YouTube channel or podcast feed URL above to subscribe.
+          No subscriptions yet. Paste a YouTube channel, podcast, or blog feed URL above to subscribe.
         </p>
       ) : null}
     </div>

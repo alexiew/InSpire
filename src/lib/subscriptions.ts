@@ -1,10 +1,11 @@
-// ABOUTME: Manages subscriptions to YouTube channels and podcast feeds.
+// ABOUTME: Manages subscriptions to YouTube channels, podcast feeds, and blog feeds.
 // ABOUTME: Provides CRUD for subscriptions and auto-ingestion of new content.
 
 import { getDb } from "./db";
 import { createContent, updateContent } from "./content";
 import { fetchChannelVideos } from "./youtube";
 import { fetchPodcastFeed } from "./podcast";
+import { fetchBlogFeed } from "./blog";
 import { processContent } from "./process-content";
 
 export interface Subscription {
@@ -108,9 +109,14 @@ export async function checkSubscription(id: number, maxItems?: number): Promise<
   if (!row) return 0;
 
   const limit = maxItems ?? DEFAULT_MAX_ITEMS;
-  const ingested = row.source_type === "podcast"
-    ? await checkPodcastSubscription(row, limit)
-    : await checkYouTubeSubscription(row, limit);
+  let ingested: number;
+  if (row.source_type === "podcast") {
+    ingested = await checkPodcastSubscription(row, limit);
+  } else if (row.source_type === "blog") {
+    ingested = await checkBlogSubscription(row, limit);
+  } else {
+    ingested = await checkYouTubeSubscription(row, limit);
+  }
 
   markChecked(id);
   return ingested;
@@ -147,6 +153,26 @@ async function checkPodcastSubscription(row: SubscriptionRow, maxItems: number):
       title: episode.title,
       author: feed.title,
       thumbnailUrl: feed.imageUrl,
+      ...(row.extraction_hints ? { extractionHints: row.extraction_hints } : {}),
+    });
+    processContent(item.id).catch(() => {});
+    ingested++;
+  }
+
+  return ingested;
+}
+
+async function checkBlogSubscription(row: SubscriptionRow, maxItems: number): Promise<number> {
+  const feed = await fetchBlogFeed(row.source_identifier);
+  let ingested = 0;
+
+  for (const article of feed.articles.slice(0, maxItems)) {
+    if (contentExists(article.guid)) continue;
+
+    const item = createContent(article.url, article.guid, "blog");
+    updateContent(item.id, {
+      title: article.title,
+      author: feed.title,
       ...(row.extraction_hints ? { extractionHints: row.extraction_hints } : {}),
     });
     processContent(item.id).catch(() => {});

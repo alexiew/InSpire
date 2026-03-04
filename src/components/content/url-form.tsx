@@ -1,5 +1,5 @@
-// ABOUTME: Form for submitting a YouTube URL for processing.
-// ABOUTME: Validates input and posts to the content API with optional extraction hints.
+// ABOUTME: Form for submitting a URL for processing.
+// ABOUTME: Accepts YouTube videos, blog articles, or podcast episodes with optional extraction hints.
 
 "use client";
 
@@ -57,7 +57,7 @@ export function UrlForm({ onSubmitted, initialTopics }: UrlFormProps) {
       <div className="flex gap-2">
         <Input
           type="url"
-          placeholder="Paste a YouTube URL..."
+          placeholder="Paste a URL..."
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           required

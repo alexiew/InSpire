@@ -1,8 +1,8 @@
 // ABOUTME: API route for listing and submitting content.
-// ABOUTME: GET returns all content, POST submits a YouTube URL for processing.
+// ABOUTME: GET returns all content, POST submits a URL for processing.
 
 import { NextRequest, NextResponse } from "next/server";
-import { listContent, createContent } from "@/lib/content";
+import { listContent, createContent, type SourceType } from "@/lib/content";
 import { extractVideoId } from "@/lib/youtube";
 import { processContent } from "@/lib/process-content";
 
@@ -21,15 +21,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "url is required" }, { status: 400 });
   }
 
+  let sourceId: string;
+  let sourceType: SourceType;
+
   const videoId = extractVideoId(url);
-  if (!videoId) {
-    return NextResponse.json(
-      { error: "Invalid YouTube URL" },
-      { status: 400 }
-    );
+  if (videoId) {
+    sourceId = videoId;
+    sourceType = "youtube";
+  } else {
+    // Non-YouTube URL: detect podcast (audio file) vs blog article
+    const audioExtensions = /\.(mp3|m4a|wav|ogg|aac|opus)(\?|$)/i;
+    sourceType = audioExtensions.test(url) ? "podcast" : "blog";
+    sourceId = url;
   }
 
-  const item = createContent(url, videoId, "youtube");
+  const item = createContent(url, sourceId, sourceType);
 
   // Pre-assign topics and/or extraction hints if provided
   const updates: Record<string, unknown> = {};

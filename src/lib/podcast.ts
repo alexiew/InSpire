@@ -64,6 +64,14 @@ export async function fetchPodcastFeed(feedUrl: string): Promise<PodcastFeed> {
   return parsePodcastFeed(xml);
 }
 
+export type FeedType = "podcast" | "blog";
+
+export function detectFeedType(xml: string): FeedType {
+  // Podcast feeds have <enclosure> elements with audio MIME types
+  const hasAudioEnclosure = /<enclosure[^>]+type="audio\//i.test(xml);
+  return hasAudioEnclosure ? "podcast" : "blog";
+}
+
 export function fetchPodcastTranscript(audioUrl: string): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(
