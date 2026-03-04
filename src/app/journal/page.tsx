@@ -25,8 +25,13 @@ function formatDateGroup(dateStr: string): string {
 
   const toDateKey = (d: Date) => d.toISOString().split("T")[0];
 
-  if (toDateKey(date) === toDateKey(today)) return "Today";
-  if (toDateKey(date) === toDateKey(yesterday)) return "Yesterday";
+  const formatted = date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+  });
+
+  if (toDateKey(date) === toDateKey(today)) return `Today — ${formatted}`;
+  if (toDateKey(date) === toDateKey(yesterday)) return `Yesterday — ${formatted}`;
 
   return date.toLocaleDateString("en-US", {
     weekday: "long",
