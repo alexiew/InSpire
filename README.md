@@ -83,6 +83,3 @@ data/
   inspire.db        # SQLite database (created on first launch, gitignored)
 ```
 
-## License
-
-MIT
