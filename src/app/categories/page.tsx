@@ -97,13 +97,18 @@ export default function MapPage() {
     );
   }
 
+  const MIN_EDGE_WEIGHT = 2;
+  const strongEdges = data.edges.filter((e) => e.weight >= MIN_EDGE_WEIGHT);
+  const connectedSlugs = new Set(strongEdges.flatMap((e) => [e.source, e.target]));
+  const visibleNodes = data.nodes.filter((n) => connectedSlugs.has(n.slug));
+
   const graphData = {
-    nodes: data.nodes.map((n) => ({ ...n, id: n.slug })),
-    links: data.edges.map((e) => ({ ...e })),
+    nodes: visibleNodes.map((n) => ({ ...n, id: n.slug })),
+    links: strongEdges.map((e) => ({ ...e })),
   };
 
-  const maxCount = Math.max(...data.nodes.map((n) => n.contentCount));
-  const maxWeight = Math.max(...data.edges.map((e) => e.weight), 1);
+  const maxCount = Math.max(...visibleNodes.map((n) => n.contentCount), 1);
+  const maxWeight = Math.max(...strongEdges.map((e) => e.weight), 1);
   const nodeColor = view === "topics" ? "hsl(221, 83%, 53%)" : "hsl(262, 83%, 58%)";
 
   return (
