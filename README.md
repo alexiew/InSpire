@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# InSpire
 
-## Getting Started
+Personal knowledge distillery. Feed it YouTube videos, podcast episodes, and blog articles — it extracts topics, claims, and people, then synthesizes insights across sources.
 
-First, run the development server:
+## Prerequisites
+
+1. **Claude CLI** — [install Claude Code](https://docs.anthropic.com/en/docs/claude-code), the Anthropic CLI. This is the only thing you need to install manually. Once you have it, open this project and ask Claude to set up the rest.
+
+2. **Node.js 20+** — required for the app itself.
+
+3. **summarize CLI** — extracts text from YouTube videos, podcasts, and web pages. Claude can install this for you.
+
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# 1. Clone the repo
+git clone <repo-url> inspire
+cd inspire
+
+# 2. Open Claude Code in the project
+claude
+
+# 3. Ask Claude to set up and run the project
+> Help me set up and run InSpire
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Claude will read the project's `CLAUDE.md` and handle installing dependencies, verifying prerequisites, and launching the dev server.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## What It Does
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Subscribe** to YouTube channels, podcast feeds, and blog RSS feeds
+- **Process** content: transcripts are extracted, then AI identifies topics, claims, and people
+- **Review** processed content in the inbox, accept or discard
+- **Explore** your knowledge base by topic, person, or full-text search
+- **Synthesize** cross-content analysis per topic (agreements, contradictions, unique insights)
+- **Map** visualize how topics and people relate through shared content
+- **Journal** save highlights from any content, compile into printable documents
+- **Newsroom** daily briefings with trending topics and people

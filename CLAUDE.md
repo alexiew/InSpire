@@ -2,10 +2,22 @@
 
 Personal knowledge distillery. Topics are the primary organizing principle — YouTube videos are inputs, not the structure. Content gets extracted into topics, claims, and people, then synthesized across sources.
 
+## First-Time Setup
+
+When a new user asks for help setting up InSpire, follow these steps in order:
+
+1. **Node.js** — verify with `node --version` (requires 20+). If missing, instruct the user to install from https://nodejs.org
+2. **Install dependencies** — run `npm install` in the project root
+3. **summarize CLI** — verify with `which summarize`. If missing, install with `npm install -g @anthropic-ai/summarize`. This tool extracts text from YouTube videos (captions), podcast audio (transcription), and web pages.
+4. **claude CLI** — verify with `which claude`. If missing, the user needs to install Claude Code from https://docs.anthropic.com/en/docs/claude-code. The app uses `claude --print` for AI extraction and synthesis.
+5. **Verify setup** — run `npm test` to confirm everything works (205+ tests should pass)
+6. **Launch** — run `npm run dev` (defaults to port 3000, use `PORT=XXXX npm run dev` if that's taken)
+
+The SQLite database is created automatically on first launch at `data/inspire.db`. No separate database setup required.
+
 ## Launching
 
 ```bash
-cd /Users/alex/2026/claude/projects/inspire
 npm run dev
 ```
 
@@ -25,8 +37,9 @@ npm run dev
 - **Topics** (`src/lib/topics.ts`): Topic CRUD with JOIN queries; content_topics join table maintains index at write time
 - **Synthesis** (`src/lib/synthesize.ts`): Cross-content analysis per topic (agreements, contradictions, unique insights)
 - **Podcast** (`src/lib/podcast.ts`): Podcast RSS feed parsing and audio transcript extraction
-- **Processing pipeline** (`src/lib/process-content.ts`): fetchMetadata → fetchTranscript → extract → save (branches on sourceType for YouTube vs podcast)
-- **Subscriptions** (`src/lib/subscriptions.ts`): YouTube channel and podcast feed subscriptions with auto-check via Recent API poll
+- **Blog** (`src/lib/blog.ts`): Blog RSS/Atom feed parsing and article text extraction
+- **Processing pipeline** (`src/lib/process-content.ts`): fetchMetadata → fetchTranscript → extract → save (branches on sourceType for YouTube vs podcast vs blog)
+- **Subscriptions** (`src/lib/subscriptions.ts`): YouTube channel, podcast feed, and blog feed subscriptions with auto-check via Recent API poll
 
 ## Content Lifecycle
 
