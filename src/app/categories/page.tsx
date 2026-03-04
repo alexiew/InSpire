@@ -1,5 +1,5 @@
-// ABOUTME: Topic network graph showing how topics relate through shared content.
-// ABOUTME: Force-directed layout where connected topics cluster naturally.
+// ABOUTME: Network graph showing how topics or people relate through shared content.
+// ABOUTME: Force-directed layout with Topics/People toggle.
 
 "use client";
 
@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import useSWR from "swr";
+import { Button } from "@/components/ui/button";
 import type { TopicGraph } from "@/lib/topics";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
@@ -15,8 +16,14 @@ const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-export default function TopicMapPage() {
-  const { data } = useSWR<TopicGraph>("/api/topics/graph", fetcher);
+type ViewMode = "topics" | "people";
+
+export default function MapPage() {
+  const [view, setView] = useState<ViewMode>("topics");
+  const { data } = useSWR<TopicGraph>(
+    view === "topics" ? "/api/topics/graph" : "/api/people/graph",
+    fetcher
+  );
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -38,25 +45,54 @@ export default function TopicMapPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleNodeClick = useCallback(
     (node: any) => {
-      if (node.slug) router.push(`/topics/${node.slug}`);
+      if (node.slug) {
+        router.push(view === "topics" ? `/topics/${node.slug}` : `/people/${node.slug}`);
+      }
     },
-    [router]
+    [router, view]
+  );
+
+  const toggle = (
+    <div className="absolute top-3 left-3 z-10 flex gap-1 bg-background/80 backdrop-blur rounded-md border p-1">
+      <Button
+        size="sm"
+        variant={view === "topics" ? "default" : "ghost"}
+        className="h-7 text-xs"
+        onClick={() => setView("topics")}
+      >
+        Topics
+      </Button>
+      <Button
+        size="sm"
+        variant={view === "people" ? "default" : "ghost"}
+        className="h-7 text-xs"
+        onClick={() => setView("people")}
+      >
+        People
+      </Button>
+    </div>
   );
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Loading...</p>
+      <div className="relative h-full w-full">
+        {toggle}
+        <div className="flex items-center justify-center h-full">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
 
   if (data.nodes.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">
-          No topics with content yet. Add content to see the topic map.
-        </p>
+      <div className="relative h-full w-full">
+        {toggle}
+        <div className="flex items-center justify-center h-full">
+          <p className="text-muted-foreground">
+            No {view} with content yet. Add content to see the map.
+          </p>
+        </div>
       </div>
     );
   }
@@ -68,9 +104,11 @@ export default function TopicMapPage() {
 
   const maxCount = Math.max(...data.nodes.map((n) => n.contentCount));
   const maxWeight = Math.max(...data.edges.map((e) => e.weight), 1);
+  const nodeColor = view === "topics" ? "hsl(221, 83%, 53%)" : "hsl(262, 83%, 58%)";
 
   return (
-    <div ref={containerRef} className="h-full w-full">
+    <div ref={containerRef} className="relative h-full w-full">
+      {toggle}
       <ForceGraph2D
         graphData={graphData}
         width={dimensions.width}
@@ -89,7 +127,7 @@ export default function TopicMapPage() {
           ctx.fillStyle = "#888";
           ctx.fillText(node.name, node.x ?? 0, (node.y ?? 0) + 6);
         }}
-        nodeColor={() => "hsl(221, 83%, 53%)"}
+        nodeColor={() => nodeColor}
         linkWidth={(link: any) =>
           1 + ((link.weight ?? 1) / maxWeight) * 4
         }

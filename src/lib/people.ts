@@ -2,6 +2,7 @@
 // ABOUTME: Provides list and detail queries for the people browsing UI.
 
 import { getDb } from "./db";
+import type { GraphNode, GraphEdge, TopicGraph } from "./topics";
 
 export interface Person {
   id: number;
@@ -50,6 +51,46 @@ export function getPerson(slug: string): Person | undefined {
     slug: row.slug,
     contentIds,
   };
+}
+
+export function getPeopleGraph(): TopicGraph {
+  const db = getDb();
+
+  const nodeRows = db
+    .prepare(
+      `SELECT p.slug, p.name, COUNT(c.id) as content_count
+       FROM people p
+       JOIN content_people cp ON cp.person_id = p.id
+       JOIN content c ON c.id = cp.content_id AND c.status = 'accepted'
+       GROUP BY p.id
+       HAVING content_count > 0`
+    )
+    .all() as { slug: string; name: string; content_count: number }[];
+
+  const nodes: GraphNode[] = nodeRows.map((r) => ({
+    slug: r.slug,
+    name: r.name,
+    contentCount: r.content_count,
+  }));
+
+  const nodeSet = new Set(nodes.map((n) => n.slug));
+
+  const allEdges = db
+    .prepare(
+      `SELECT p1.slug as source, p2.slug as target, COUNT(*) as weight
+       FROM content_people cp1
+       JOIN content_people cp2 ON cp1.content_id = cp2.content_id
+       JOIN content c ON c.id = cp1.content_id AND c.status = 'accepted'
+       JOIN people p1 ON p1.id = cp1.person_id
+       JOIN people p2 ON p2.id = cp2.person_id
+       WHERE p1.slug < p2.slug
+       GROUP BY p1.slug, p2.slug`
+    )
+    .all() as GraphEdge[];
+
+  const edges = allEdges.filter((e) => nodeSet.has(e.source) && nodeSet.has(e.target));
+
+  return { nodes, edges };
 }
 
 function getContentIdsForPerson(personId: number): string[] {

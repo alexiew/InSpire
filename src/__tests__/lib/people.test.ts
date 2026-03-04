@@ -97,3 +97,57 @@ describe("getPerson", () => {
     expect(getPerson("nonexistent")).toBeUndefined();
   });
 });
+
+describe("getPeopleGraph", () => {
+  it("returns nodes for people with accepted content", async () => {
+    const { createContent, updateContent, getPeopleGraph } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { people: ["Alice", "Bob"], status: "accepted" });
+
+    const graph = getPeopleGraph();
+    expect(graph.nodes).toHaveLength(2);
+    expect(graph.nodes.map((n) => n.name).sort()).toEqual(["Alice", "Bob"]);
+    expect(graph.nodes[0].contentCount).toBe(1);
+  });
+
+  it("returns edges for people sharing content", async () => {
+    const { createContent, updateContent, getPeopleGraph } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { people: ["Alice", "Bob"], status: "accepted" });
+
+    const graph = getPeopleGraph();
+    expect(graph.edges).toHaveLength(1);
+    expect(graph.edges[0].weight).toBe(1);
+  });
+
+  it("edge weight reflects number of shared items", async () => {
+    const { createContent, updateContent, getPeopleGraph } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { people: ["Alice", "Bob"], status: "accepted" });
+
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    updateContent(c2.id, { people: ["Alice", "Bob"], status: "accepted" });
+
+    const graph = getPeopleGraph();
+    expect(graph.edges).toHaveLength(1);
+    expect(graph.edges[0].weight).toBe(2);
+  });
+
+  it("excludes people with only non-accepted content", async () => {
+    const { createContent, updateContent, getPeopleGraph } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { people: ["Alice"], status: "accepted" });
+
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    updateContent(c2.id, { people: ["Alice", "Charlie"], status: "ready" });
+
+    const graph = getPeopleGraph();
+    expect(graph.nodes).toHaveLength(1);
+    expect(graph.nodes[0].name).toBe("Alice");
+    expect(graph.edges).toHaveLength(0);
+  });
+});
