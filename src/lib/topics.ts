@@ -138,7 +138,9 @@ export function getTopicGraph(): TopicGraph {
     contentCount: r.content_count,
   }));
 
-  const edges = db
+  const nodeSet = new Set(nodes.map((n) => n.slug));
+
+  const allEdges = db
     .prepare(
       `SELECT ct1.topic_slug as source, ct2.topic_slug as target, COUNT(*) as weight
        FROM content_topics ct1
@@ -148,6 +150,8 @@ export function getTopicGraph(): TopicGraph {
        GROUP BY ct1.topic_slug, ct2.topic_slug`
     )
     .all() as GraphEdge[];
+
+  const edges = allEdges.filter((e) => nodeSet.has(e.source) && nodeSet.has(e.target));
 
   return { nodes, edges };
 }

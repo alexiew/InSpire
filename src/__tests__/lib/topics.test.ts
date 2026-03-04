@@ -313,6 +313,21 @@ describe("getTopicGraph", () => {
     expect(graph.nodes[0].name).toBe("sleep");
   });
 
+  it("excludes edges referencing topics only on non-accepted content", async () => {
+    const { createContent, updateContent, getTopicGraph } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c1.id, { topics: ["sleep", "longevity"], status: "accepted" });
+
+    // This content shares "sleep" but is not accepted — "gaming" should not appear
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    updateContent(c2.id, { topics: ["sleep", "gaming"], status: "ready" });
+
+    const graph = getTopicGraph();
+    const edgeSlugs = graph.edges.flatMap((e) => [e.source, e.target]);
+    expect(edgeSlugs).not.toContain("gaming");
+  });
+
   it("edge weight reflects number of shared items", async () => {
     const { createContent, updateContent, getTopicGraph } = await loadModules();
 
