@@ -82,7 +82,7 @@ export default function ContentDetailPage({
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
         >
-          {item.sourceType === "podcast" ? "Listen to episode" : "Watch on YouTube"}
+          {item.sourceType === "podcast" ? "Listen to episode" : item.sourceType === "blog" ? "Read full article" : "Watch on YouTube"}
           <ExternalLink className="h-3 w-3" />
         </a>
       </div>
