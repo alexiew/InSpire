@@ -8,8 +8,8 @@ When a new user asks for help setting up InSpire, follow these steps in order:
 
 1. **Node.js** — verify with `node --version` (requires 20+). If missing, instruct the user to install from https://nodejs.org
 2. **Install dependencies** — run `npm install` in the project root
-3. **summarize CLI** — verify with `which summarize`. If missing, install with `npm install -g @anthropic-ai/summarize`. This tool extracts text from YouTube videos (captions), podcast audio (transcription), and web pages.
-4. **claude CLI** — verify with `which claude`. If missing, the user needs to install Claude Code from https://docs.anthropic.com/en/docs/claude-code. The app uses `claude --print` for AI extraction and synthesis.
+3. **summarize CLI** — verify with `which summarize`. If missing, install with `npm install -g @steipete/summarize` (requires Node 22+). This tool extracts text from YouTube videos (captions), podcast audio (transcription), and web pages. See https://github.com/steipete/summarize
+4. **claude CLI** — verify with `which claude`. The app uses `claude --print` for AI extraction and synthesis.
 5. **Verify setup** — run `npm test` to confirm everything works (205+ tests should pass)
 6. **Launch** — run `npm run dev` (defaults to port 3000, use `PORT=XXXX npm run dev` if that's taken)
 
@@ -26,14 +26,14 @@ npm run dev
 - Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, SWR
 - SQLite storage via better-sqlite3 (`data/inspire.db`)
 - Transcript extraction via `summarize` CLI (`@steipete/summarize`) — YouTube captions + podcast audio transcription
-- AI extraction and synthesis via `claude --print` CLI (uses Max plan, no API costs)
+- AI extraction and synthesis via `claude --print` CLI
 - Vitest for testing
 
 ## Architecture
 
 - **Database** (`src/lib/db.ts`): SQLite connection management, schema init, `closeDb()` for test isolation
 - **ContentItem** (`src/lib/content.ts`): Core data model with summary, topics[], claims[], people[]
-- **Extraction** (`src/lib/extract.ts`): Claude produces markdown summary + JSON metadata block
+- **Extraction** (`src/lib/extract.ts`): AI produces markdown summary + JSON metadata block
 - **Topics** (`src/lib/topics.ts`): Topic CRUD with JOIN queries; content_topics join table maintains index at write time
 - **Synthesis** (`src/lib/synthesize.ts`): Cross-content analysis per topic (agreements, contradictions, unique insights)
 - **Podcast** (`src/lib/podcast.ts`): Podcast RSS feed parsing and audio transcript extraction

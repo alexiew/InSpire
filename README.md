@@ -4,11 +4,11 @@ Personal knowledge distillery. Feed it YouTube videos, podcast episodes, and blo
 
 ## Prerequisites
 
-1. **Claude CLI** — [install Claude Code](https://docs.anthropic.com/en/docs/claude-code), the Anthropic CLI. This is the only thing you need to install manually. Once you have it, open this project and ask Claude to set up the rest.
+1. **Claude CLI** — install [Claude Code](https://claude.ai/download). This is the only thing you need to install manually. Once you have it, open this project and ask Claude to set up the rest.
 
-2. **Node.js 20+** — required for the app itself.
+2. **Node.js 22+** — required for the app and the summarize CLI.
 
-3. **summarize CLI** — extracts text from YouTube videos, podcasts, and web pages. Claude can install this for you.
+3. **summarize CLI** — extracts text from YouTube videos, podcasts, and web pages. Claude can install this for you, or: `npm install -g @steipete/summarize`
 
 ## Quick Start
 
