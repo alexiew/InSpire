@@ -106,7 +106,7 @@ export default function ContentDetailPage({
         onUpdated={() => mutate()}
       />
 
-      {item.people.length > 0 && (
+      {item.people?.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-lg font-semibold">People</h2>
           <div className="flex flex-wrap gap-2">
@@ -124,7 +124,7 @@ export default function ContentDetailPage({
       )}
 
       <SelectionJournal contentId={id}>
-        {item.claims.length > 0 && (
+        {item.claims?.length > 0 && (
           <div className="space-y-2">
             <h2 className="text-lg font-semibold">Key Claims</h2>
             <ul className="list-disc list-inside space-y-1 text-sm">
