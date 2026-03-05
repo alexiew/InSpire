@@ -293,6 +293,71 @@ describe("topic/people sequencing", () => {
   });
 });
 
+describe("people editing on accepted content", () => {
+  it("removes a person from accepted content via updateContent", async () => {
+    const content = await loadModule();
+    const people = await import("@/lib/people");
+
+    const c = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c.id, {
+      people: ["Andrew Huberman", "Anna Lembke", "David Goggins"],
+      status: "accepted",
+    });
+
+    // All three in knowledge base
+    expect(people.getPerson("andrew-huberman")).toBeDefined();
+    expect(people.getPerson("anna-lembke")).toBeDefined();
+    expect(people.getPerson("david-goggins")).toBeDefined();
+
+    // Remove Anna Lembke
+    content.updateContent(c.id, { people: ["Andrew Huberman", "David Goggins"] });
+
+    const item = content.getContent(c.id);
+    expect(item!.people).toEqual(["Andrew Huberman", "David Goggins"]);
+    expect(item!.people).not.toContain("Anna Lembke");
+  });
+
+  it("cleans up orphaned people when removed from all content", async () => {
+    const content = await loadModule();
+    const people = await import("@/lib/people");
+
+    const c = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c.id, {
+      people: ["Andrew Huberman", "Anna Lembke"],
+      status: "accepted",
+    });
+
+    // Remove Anna — she's only on this one item
+    content.updateContent(c.id, { people: ["Andrew Huberman"] });
+
+    expect(people.getPerson("andrew-huberman")).toBeDefined();
+    expect(people.getPerson("anna-lembke")).toBeUndefined();
+  });
+
+  it("preserves people still referenced by other content", async () => {
+    const content = await loadModule();
+    const people = await import("@/lib/people");
+
+    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c1.id, {
+      people: ["Andrew Huberman", "Anna Lembke"],
+      status: "accepted",
+    });
+
+    const c2 = content.createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    content.updateContent(c2.id, {
+      people: ["Andrew Huberman"],
+      status: "accepted",
+    });
+
+    // Remove Huberman from c1 — but c2 still has him
+    content.updateContent(c1.id, { people: ["Anna Lembke"] });
+
+    expect(people.getPerson("andrew-huberman")).toBeDefined();
+    expect(people.getPerson("anna-lembke")).toBeDefined();
+  });
+});
+
 describe("deleteContent", () => {
   it("deletes an item and returns true", async () => {
     const { createContent, deleteContent, listContent } = await loadModule();

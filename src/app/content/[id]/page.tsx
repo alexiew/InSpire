@@ -5,15 +5,14 @@
 
 import { use } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { ArrowLeft, Check, ExternalLink, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/content/status-badge";
 import { SelectionJournal } from "@/components/content/selection-journal";
 import { TopicEditor } from "@/components/content/topic-editor";
+import { PeopleEditor } from "@/components/content/people-editor";
 import { TranscriptSection } from "@/components/content/transcript-section";
 import { useContentItem } from "@/hooks/use-content";
-import { slugify } from "@/lib/utils";
 
 export default function ContentDetailPage({
   params,
@@ -109,17 +108,11 @@ export default function ContentDetailPage({
       {item.people?.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-lg font-semibold">People</h2>
-          <div className="flex flex-wrap gap-2">
-            {item.people.map((person) => (
-              <Link
-                key={person}
-                href={`/people/${slugify(person)}`}
-                className="text-sm bg-muted px-2 py-1 rounded hover:bg-muted/80 transition-colors"
-              >
-                {person}
-              </Link>
-            ))}
-          </div>
+          <PeopleEditor
+            contentId={id}
+            people={item.people}
+            onUpdated={() => mutate()}
+          />
         </div>
       )}
 

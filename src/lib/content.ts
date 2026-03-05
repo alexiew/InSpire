@@ -131,13 +131,30 @@ function syncContentTopics(id: string, topics: string[]): void {
 
 function syncContentPeople(id: string, people: string[]): void {
   const db = getDb();
+
+  const previousIds = (
+    db.prepare("SELECT person_id FROM content_people WHERE content_id = ?").all(id) as { person_id: number }[]
+  ).map((r) => r.person_id);
+
   db.prepare("DELETE FROM content_people WHERE content_id = ?").run(id);
 
+  const newIds = new Set<number>();
   for (const name of people) {
     const personSlug = slugify(name);
     db.prepare("INSERT OR IGNORE INTO people (name, slug) VALUES (?, ?)").run(name, personSlug);
     const person = db.prepare("SELECT id FROM people WHERE name = ?").get(name) as { id: number };
     db.prepare("INSERT OR IGNORE INTO content_people (content_id, person_id) VALUES (?, ?)").run(id, person.id);
+    newIds.add(person.id);
+  }
+
+  // Clean up people that were removed from this content and have no other associations
+  const removed = previousIds.filter((pid) => !newIds.has(pid));
+  for (const pid of removed) {
+    db.prepare(
+      `DELETE FROM people WHERE id = ? AND id NOT IN (
+         SELECT person_id FROM content_people
+       )`
+    ).run(pid);
   }
 }
 

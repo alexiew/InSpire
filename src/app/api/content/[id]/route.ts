@@ -1,5 +1,5 @@
 // ABOUTME: API route for individual content operations.
-// ABOUTME: GET retrieves, PATCH updates topics and status, DELETE removes content.
+// ABOUTME: GET retrieves, PATCH updates topics/people/status, DELETE removes content.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getContent, updateContent, deleteContent } from "@/lib/content";
@@ -37,6 +37,13 @@ export async function PATCH(
       return NextResponse.json({ error: "topics must be an array of strings" }, { status: 400 });
     }
     updates.topics = body.topics;
+  }
+
+  if (body.people !== undefined) {
+    if (!Array.isArray(body.people) || !body.people.every((p: unknown) => typeof p === "string")) {
+      return NextResponse.json({ error: "people must be an array of strings" }, { status: 400 });
+    }
+    updates.people = body.people;
   }
 
   if (body.status !== undefined) {

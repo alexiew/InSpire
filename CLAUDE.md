@@ -52,7 +52,7 @@ npm run dev
 ## Key Routes
 
 - `GET/POST /api/content` — list and submit content
-- `GET/PATCH/DELETE /api/content/[id]` — single content item; PATCH accepts `{ topics, status }`
+- `GET/PATCH/DELETE /api/content/[id]` — single content item; PATCH accepts `{ topics, people, status }`
 - `GET /api/recent` — items pending review (processing, ready, error)
 - `GET /api/library?q=search` — accepted content, optional title search
 - `GET /api/topics` — all topics
