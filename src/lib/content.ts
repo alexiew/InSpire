@@ -57,26 +57,32 @@ function rowToContentItem(row: ContentRow): ContentItem {
   let topics: string[];
   let people: string[];
 
-  if (row.status === "accepted") {
-    const topicRows = db
-      .prepare("SELECT topic_slug FROM content_topics WHERE content_id = ?")
-      .all(row.id) as { topic_slug: string }[];
-    topics = topicRows.map((r) => r.topic_slug).map((slug) => {
-      const topic = db.prepare("SELECT name FROM topics WHERE slug = ?").get(slug) as { name: string } | undefined;
-      return topic ? topic.name : slug;
-    });
+  const topicRows = db
+    .prepare("SELECT topic_slug FROM content_topics WHERE content_id = ?")
+    .all(row.id) as { topic_slug: string }[];
+  const joinTopics = topicRows.map((r) => r.topic_slug).map((slug) => {
+    const topic = db.prepare("SELECT name FROM topics WHERE slug = ?").get(slug) as { name: string } | undefined;
+    return topic ? topic.name : slug;
+  });
 
-    const peopleRows = db
-      .prepare(
-        `SELECT p.name FROM content_people cp
-         JOIN people p ON p.id = cp.person_id
-         WHERE cp.content_id = ?`
-      )
-      .all(row.id) as { name: string }[];
-    people = peopleRows.map((r) => r.name);
+  const peopleRows = db
+    .prepare(
+      `SELECT p.name FROM content_people cp
+       JOIN people p ON p.id = cp.person_id
+       WHERE cp.content_id = ?`
+    )
+    .all(row.id) as { name: string }[];
+  const joinPeople = peopleRows.map((r) => r.name);
+
+  if (row.status === "accepted") {
+    topics = joinTopics;
+    people = joinPeople;
   } else {
-    topics = JSON.parse(row.pending_topics);
-    people = JSON.parse(row.pending_people);
+    const pendingTopics = JSON.parse(row.pending_topics) as string[];
+    const pendingPeople = JSON.parse(row.pending_people) as string[];
+    // Prefer pending columns, fall back to join tables for legacy data
+    topics = pendingTopics.length > 0 ? pendingTopics : joinTopics;
+    people = pendingPeople.length > 0 ? pendingPeople : joinPeople;
   }
 
   return {

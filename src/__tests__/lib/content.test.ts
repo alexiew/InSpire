@@ -358,6 +358,29 @@ describe("people editing on accepted content", () => {
   });
 });
 
+describe("data consistency for non-accepted content", () => {
+  it("returns topics/people for ready content even if data is in join tables", async () => {
+    const { createContent, updateContent, getContent } = await loadModule();
+    const { getDb } = await import("@/lib/db");
+
+    // Simulate legacy state: ready content with data in join tables instead of pending columns
+    const c = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    updateContent(c.id, { status: "ready" });
+
+    // Manually write to join tables (simulating pre-migration data)
+    const db = getDb();
+    db.prepare("INSERT OR IGNORE INTO topics (slug, name) VALUES (?, ?)").run("longevity", "longevity");
+    db.prepare("INSERT OR IGNORE INTO content_topics (content_id, topic_slug) VALUES (?, ?)").run(c.id, "longevity");
+    db.prepare("INSERT OR IGNORE INTO people (name, slug) VALUES (?, ?)").run("Dr. Smith", "dr-smith");
+    const person = db.prepare("SELECT id FROM people WHERE name = ?").get("Dr. Smith") as { id: number };
+    db.prepare("INSERT OR IGNORE INTO content_people (content_id, person_id) VALUES (?, ?)").run(c.id, person.id);
+
+    const item = getContent(c.id);
+    expect(item!.topics).toContain("longevity");
+    expect(item!.people).toContain("Dr. Smith");
+  });
+});
+
 describe("deleteContent", () => {
   it("deletes an item and returns true", async () => {
     const { createContent, deleteContent, listContent } = await loadModule();
