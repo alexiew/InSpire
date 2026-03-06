@@ -122,13 +122,46 @@ function formatVelocityLines(velocities: Velocity[]): string[] {
   });
 }
 
-export function buildBriefingPrompt(
+function formatContentItems(items: SynthesisInput[]): string {
+  const itemLines = items.map((item) => {
+    const parts = [`### ${item.title} (by ${item.author})`, `**Summary:** ${item.summary}`];
+    if (item.claims.length > 0) {
+      parts.push("**Claims:**");
+      parts.push(...item.claims.map((c) => `  - ${c}`));
+    }
+    return parts.join("\n");
+  });
+  return itemLines.join("\n\n");
+}
+
+const BRIEFING_FORMAT = `Produce a briefing with exactly these sections:
+
+## Headline
+One bold sentence — the single most important insight right now.
+
+## What's Heating Up
+Which topics are gaining momentum and what the convergence means. (2-4 bullets)
+
+## Conservative
+Well-supported, safe conclusions from the data. (2-4 bullets)
+
+## Bold
+Strong analytical claims with extrapolation. Be opinionated. (2-4 bullets)
+
+## Moonshot
+Speculative, high-risk/high-reward predictions. Swing big. (1-3 bullets)
+
+## Look Into This
+Specific, actionable suggestions. "You should explore X because Y." (2-4 bullets)
+
+Keep it concise and scannable. The entire briefing should fit on one screen.`;
+
+function buildBriefingSections(
   velocities: TopicVelocity[],
-  recentItems: SynthesisInput[],
   topicSyntheses: { name: string; synthesis: string }[],
   previousBriefing?: string,
   peopleVelocities?: Velocity[]
-): string {
+): string[] {
   const sections: string[] = [];
 
   sections.push(
@@ -154,44 +187,27 @@ export function buildBriefingPrompt(
     sections.push(`TOPIC SYNTHESES (existing analytical understanding):\n${synthLines.join("\n\n")}`);
   }
 
-  if (recentItems.length > 0) {
-    const itemLines = recentItems.map((item) => {
-      const parts = [`### ${item.title} (by ${item.author})`, `**Summary:** ${item.summary}`];
-      if (item.claims.length > 0) {
-        parts.push("**Claims:**");
-        parts.push(...item.claims.map((c) => `  - ${c}`));
-      }
-      return parts.join("\n");
-    });
-    sections.push(`NEW CONTENT SINCE LAST BRIEFING:\n${itemLines.join("\n\n")}`);
-  }
-
   if (previousBriefing) {
     sections.push(`PREVIOUS BRIEFING (for context on what was already covered):\n---\n${previousBriefing}\n---`);
   }
 
-  sections.push(`Produce a briefing with exactly these sections:
+  return sections;
+}
 
-## Headline
-One bold sentence — the single most important insight right now.
+export function buildBriefingPrompt(
+  velocities: TopicVelocity[],
+  recentItems: SynthesisInput[],
+  topicSyntheses: { name: string; synthesis: string }[],
+  previousBriefing?: string,
+  peopleVelocities?: Velocity[]
+): string {
+  const sections = buildBriefingSections(velocities, topicSyntheses, previousBriefing, peopleVelocities);
 
-## What's Heating Up
-Which topics are gaining momentum and what the convergence means. (2-4 bullets)
+  if (recentItems.length > 0) {
+    sections.push(`NEW CONTENT SINCE LAST BRIEFING:\n${formatContentItems(recentItems)}`);
+  }
 
-## Conservative
-Well-supported, safe conclusions from the data. (2-4 bullets)
-
-## Bold
-Strong analytical claims with extrapolation. Be opinionated. (2-4 bullets)
-
-## Moonshot
-Speculative, high-risk/high-reward predictions. Swing big. (1-3 bullets)
-
-## Look Into This
-Specific, actionable suggestions. "You should explore X because Y." (2-4 bullets)
-
-Keep it concise and scannable. The entire briefing should fit on one screen.`);
-
+  sections.push(BRIEFING_FORMAT);
   return sections.join("\n\n");
 }
 
@@ -233,6 +249,37 @@ export function saveBriefing(
   return rowToBriefing(row);
 }
 
+const MAX_ITEMS_PER_PROMPT = 30;
+
+function buildDigestPrompt(items: SynthesisInput[]): string {
+  return `You are condensing ${items.length} content items into a brief digest for an intelligence briefing.
+
+CONTENT ITEMS:
+${formatContentItems(items)}
+
+Produce a concise digest covering:
+- Key themes and topics across these items
+- Notable claims and findings
+- Important people mentioned
+- Any patterns or contradictions
+
+Keep the digest to about 500 words. Focus on what matters for trend analysis.`;
+}
+
+async function digestItems(items: SynthesisInput[]): Promise<string[]> {
+  const batches: SynthesisInput[][] = [];
+  for (let i = 0; i < items.length; i += MAX_ITEMS_PER_PROMPT) {
+    batches.push(items.slice(i, i + MAX_ITEMS_PER_PROMPT));
+  }
+
+  const digests: string[] = [];
+  for (const batch of batches) {
+    const digest = await callClaude(buildDigestPrompt(batch));
+    digests.push(digest);
+  }
+  return digests;
+}
+
 export async function generateBriefing(): Promise<Briefing> {
   const allAccepted = listLibrary();
   if (allAccepted.length === 0) {
@@ -268,13 +315,27 @@ export async function generateBriefing(): Promise<Briefing> {
     .filter((t) => t.synthesis)
     .map((t) => ({ name: t.name, synthesis: t.synthesis! }));
 
-  const prompt = buildBriefingPrompt(
-    velocities,
-    recentItems,
-    topicSyntheses,
-    previous?.content,
-    peopleVelocities
-  );
+  let prompt: string;
+
+  if (recentItems.length > MAX_ITEMS_PER_PROMPT) {
+    // Digest items in batches, then build the briefing from digests
+    const digests = await digestItems(recentItems);
+    const digestSection = digests.map((d, i) => `### Batch ${i + 1}\n${d}`).join("\n\n");
+
+    const sections = buildBriefingSections(velocities, topicSyntheses, previous?.content, peopleVelocities);
+    sections.push(`CONTENT DIGESTS (${recentItems.length} new items condensed):\n${digestSection}`);
+    sections.push(BRIEFING_FORMAT);
+
+    prompt = sections.join("\n\n");
+  } else {
+    prompt = buildBriefingPrompt(
+      velocities,
+      recentItems,
+      topicSyntheses,
+      previous?.content,
+      peopleVelocities
+    );
+  }
 
   const content = await callClaude(prompt);
   return saveBriefing(content, velocities, allContentIds);

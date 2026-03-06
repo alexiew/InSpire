@@ -469,6 +469,34 @@ describe("generateBriefing", () => {
     await expect(briefing.generateBriefing()).rejects.toThrow("No new content since last briefing");
   });
 
+  it("digests new items in batches when more than 30", async () => {
+    const { callClaude, content, briefing } = await setup();
+    callClaude.mockResolvedValue("Digest or briefing result.");
+
+    // Create 35 accepted items (> 30 threshold)
+    for (let i = 0; i < 35; i++) {
+      const c = content.createContent(`https://youtube.com/watch?v=${i}`, `${i}`, "youtube");
+      content.updateContent(c.id, {
+        title: `Video ${i}`, author: `Author ${i}`, summary: `Summary ${i}`,
+        topics: ["topic"], status: "accepted",
+      });
+    }
+
+    await briefing.generateBriefing();
+
+    // 35 items = 2 batches (30 + 5) → 2 digest calls + 1 final briefing = 3
+    expect(callClaude).toHaveBeenCalledTimes(3);
+
+    // First two calls should be digest requests
+    expect(callClaude.mock.calls[0][0]).toContain("digest");
+    expect(callClaude.mock.calls[1][0]).toContain("digest");
+
+    // Final call should include the digest output, not the raw summaries
+    const briefingPrompt = callClaude.mock.calls[2][0];
+    expect(briefingPrompt).toContain("CONTENT DIGESTS");
+    expect(briefingPrompt).toContain("Headline");
+  });
+
   it("stores content IDs for incremental detection", async () => {
     const { callClaude, content, briefing } = await setup();
     callClaude.mockResolvedValue("Briefing result.");
