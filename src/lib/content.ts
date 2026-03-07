@@ -12,6 +12,7 @@ export interface ContentItem {
   url: string;
   sourceId: string;
   sourceType: SourceType;
+  siloId?: number;
   title: string;
   author: string;
   thumbnailUrl: string;
@@ -32,6 +33,7 @@ interface ContentRow {
   url: string;
   source_id: string;
   source_type: string;
+  silo_id: number | null;
   title: string;
   author: string;
   thumbnail_url: string;
@@ -57,30 +59,49 @@ function rowToContentItem(row: ContentRow): ContentItem {
   let topics: string[];
   let people: string[];
 
-  const topicRows = db
-    .prepare("SELECT topic_slug FROM content_topics WHERE content_id = ?")
-    .all(row.id) as { topic_slug: string }[];
-  const joinTopics = topicRows.map((r) => r.topic_slug).map((slug) => {
-    const topic = db.prepare("SELECT name FROM topics WHERE slug = ?").get(slug) as { name: string } | undefined;
-    return topic ? topic.name : slug;
-  });
+  // Silo content always uses pending columns (never join tables)
+  if (row.silo_id != null) {
+    topics = JSON.parse(row.pending_topics);
+    people = JSON.parse(row.pending_people);
+  } else if (row.status === "accepted") {
+    const topicRows = db
+      .prepare("SELECT topic_slug FROM content_topics WHERE content_id = ?")
+      .all(row.id) as { topic_slug: string }[];
+    topics = topicRows.map((r) => r.topic_slug).map((slug) => {
+      const topic = db.prepare("SELECT name FROM topics WHERE slug = ?").get(slug) as { name: string } | undefined;
+      return topic ? topic.name : slug;
+    });
 
-  const peopleRows = db
-    .prepare(
-      `SELECT p.name FROM content_people cp
-       JOIN people p ON p.id = cp.person_id
-       WHERE cp.content_id = ?`
-    )
-    .all(row.id) as { name: string }[];
-  const joinPeople = peopleRows.map((r) => r.name);
-
-  if (row.status === "accepted") {
-    topics = joinTopics;
-    people = joinPeople;
+    const peopleRows = db
+      .prepare(
+        `SELECT p.name FROM content_people cp
+         JOIN people p ON p.id = cp.person_id
+         WHERE cp.content_id = ?`
+      )
+      .all(row.id) as { name: string }[];
+    people = peopleRows.map((r) => r.name);
   } else {
     const pendingTopics = JSON.parse(row.pending_topics) as string[];
     const pendingPeople = JSON.parse(row.pending_people) as string[];
+
     // Prefer pending columns, fall back to join tables for legacy data
+    const topicRows = db
+      .prepare("SELECT topic_slug FROM content_topics WHERE content_id = ?")
+      .all(row.id) as { topic_slug: string }[];
+    const joinTopics = topicRows.map((r) => r.topic_slug).map((slug) => {
+      const topic = db.prepare("SELECT name FROM topics WHERE slug = ?").get(slug) as { name: string } | undefined;
+      return topic ? topic.name : slug;
+    });
+
+    const peopleRows = db
+      .prepare(
+        `SELECT p.name FROM content_people cp
+         JOIN people p ON p.id = cp.person_id
+         WHERE cp.content_id = ?`
+      )
+      .all(row.id) as { name: string }[];
+    const joinPeople = peopleRows.map((r) => r.name);
+
     topics = pendingTopics.length > 0 ? pendingTopics : joinTopics;
     people = pendingPeople.length > 0 ? pendingPeople : joinPeople;
   }
@@ -90,6 +111,7 @@ function rowToContentItem(row: ContentRow): ContentItem {
     url: row.url,
     sourceId: row.source_id,
     sourceType: row.source_type as SourceType,
+    siloId: row.silo_id ?? undefined,
     title: row.title,
     author: row.author,
     thumbnailUrl: row.thumbnail_url,
@@ -167,7 +189,7 @@ function syncContentPeople(id: string, people: string[]): void {
 export function listContent(): ContentItem[] {
   const db = getDb();
   const rows = db
-    .prepare("SELECT * FROM content ORDER BY created_at DESC")
+    .prepare("SELECT * FROM content WHERE silo_id IS NULL ORDER BY created_at DESC")
     .all() as ContentRow[];
   return rows.map(rowToContentItem);
 }
@@ -175,7 +197,7 @@ export function listContent(): ContentItem[] {
 export function listRecent(): ContentItem[] {
   const db = getDb();
   const rows = db
-    .prepare("SELECT * FROM content WHERE status IN ('processing', 'ready', 'error') ORDER BY created_at DESC")
+    .prepare("SELECT * FROM content WHERE silo_id IS NULL AND status IN ('processing', 'ready', 'error') ORDER BY created_at DESC")
     .all() as ContentRow[];
   return rows.map(rowToContentItem);
 }
@@ -187,15 +209,23 @@ export function listLibrary(search?: string): ContentItem[] {
       .prepare(
         `SELECT c.* FROM content c
          JOIN content_fts ON content_fts.rowid = c.rowid
-         WHERE content_fts MATCH ? AND c.status = 'accepted'
+         WHERE content_fts MATCH ? AND c.status = 'accepted' AND c.silo_id IS NULL
          ORDER BY rank`
       )
       .all(search) as ContentRow[];
     return rows.map(rowToContentItem);
   }
   const rows = db
-    .prepare("SELECT * FROM content WHERE status = 'accepted' ORDER BY created_at DESC")
+    .prepare("SELECT * FROM content WHERE silo_id IS NULL AND status = 'accepted' ORDER BY created_at DESC")
     .all() as ContentRow[];
+  return rows.map(rowToContentItem);
+}
+
+export function listSiloContent(siloId: number): ContentItem[] {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT * FROM content WHERE silo_id = ? ORDER BY created_at DESC")
+    .all(siloId) as ContentRow[];
   return rows.map(rowToContentItem);
 }
 
@@ -209,16 +239,17 @@ export function getContent(id: string): ContentItem | undefined {
 export function createContent(
   url: string,
   sourceId: string,
-  sourceType: SourceType
+  sourceType: SourceType,
+  siloId?: number
 ): ContentItem {
   const db = getDb();
   const id = generateId();
   const now = new Date().toISOString();
 
   db.prepare(
-    `INSERT INTO content (id, url, source_id, source_type, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(id, url, sourceId, sourceType, now, now);
+    `INSERT INTO content (id, url, source_id, source_type, silo_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, url, sourceId, sourceType, siloId ?? null, now, now);
 
   return getContent(id)!;
 }
@@ -254,78 +285,93 @@ export function updateContent(
     values.push(id);
     db.prepare(`UPDATE content SET ${setClauses.join(", ")} WHERE id = ?`).run(...values);
 
+    const isSiloContent = existing.silo_id != null;
     const effectiveStatus = (updates.status as string) ?? existing.status;
     const wasAccepted = existing.status === "accepted";
     const nowAccepted = effectiveStatus === "accepted";
 
-    // Handle topics: join table only for accepted content
-    if (updates.topics !== undefined) {
-      if (nowAccepted) {
-        syncContentTopics(id, updates.topics);
-        db.prepare("UPDATE content SET pending_topics = '[]' WHERE id = ?").run(id);
-      } else {
+    // Silo content always uses pending columns, never join tables
+    if (isSiloContent) {
+      if (updates.topics !== undefined) {
         db.prepare("UPDATE content SET pending_topics = ? WHERE id = ?").run(
           JSON.stringify(updates.topics), id
         );
       }
-    }
-
-    // Handle people: join table only for accepted content
-    if (updates.people !== undefined) {
-      if (nowAccepted) {
-        syncContentPeople(id, updates.people);
-        db.prepare("UPDATE content SET pending_people = '[]' WHERE id = ?").run(id);
-      } else {
+      if (updates.people !== undefined) {
         db.prepare("UPDATE content SET pending_people = ? WHERE id = ?").run(
           JSON.stringify(updates.people), id
         );
       }
-    }
-
-    // Promote pending data on acceptance (when topics/people aren't explicitly set)
-    if (nowAccepted && !wasAccepted) {
-      if (updates.topics === undefined) {
-        const pending = JSON.parse(existing.pending_topics) as string[];
-        if (pending.length > 0) {
-          syncContentTopics(id, pending);
+    } else {
+      // Handle topics: join table only for accepted main KB content
+      if (updates.topics !== undefined) {
+        if (nowAccepted) {
+          syncContentTopics(id, updates.topics);
           db.prepare("UPDATE content SET pending_topics = '[]' WHERE id = ?").run(id);
+        } else {
+          db.prepare("UPDATE content SET pending_topics = ? WHERE id = ?").run(
+            JSON.stringify(updates.topics), id
+          );
         }
       }
-      if (updates.people === undefined) {
-        const pending = JSON.parse(existing.pending_people) as string[];
-        if (pending.length > 0) {
-          syncContentPeople(id, pending);
+
+      // Handle people: join table only for accepted main KB content
+      if (updates.people !== undefined) {
+        if (nowAccepted) {
+          syncContentPeople(id, updates.people);
           db.prepare("UPDATE content SET pending_people = '[]' WHERE id = ?").run(id);
+        } else {
+          db.prepare("UPDATE content SET pending_people = ? WHERE id = ?").run(
+            JSON.stringify(updates.people), id
+          );
         }
       }
-    }
 
-    // Demote on discard: save join data back to pending, remove from join tables
-    if (!nowAccepted && wasAccepted) {
-      const topicRows = db
-        .prepare("SELECT topic_slug FROM content_topics WHERE content_id = ?")
-        .all(id) as { topic_slug: string }[];
-      const topicNames = topicRows.map((r) => {
-        const t = db.prepare("SELECT name FROM topics WHERE slug = ?").get(r.topic_slug) as { name: string } | undefined;
-        return t ? t.name : r.topic_slug;
-      });
-      db.prepare("UPDATE content SET pending_topics = ? WHERE id = ?").run(
-        JSON.stringify(topicNames), id
-      );
+      // Promote pending data on acceptance (when topics/people aren't explicitly set)
+      if (nowAccepted && !wasAccepted) {
+        if (updates.topics === undefined) {
+          const pending = JSON.parse(existing.pending_topics) as string[];
+          if (pending.length > 0) {
+            syncContentTopics(id, pending);
+            db.prepare("UPDATE content SET pending_topics = '[]' WHERE id = ?").run(id);
+          }
+        }
+        if (updates.people === undefined) {
+          const pending = JSON.parse(existing.pending_people) as string[];
+          if (pending.length > 0) {
+            syncContentPeople(id, pending);
+            db.prepare("UPDATE content SET pending_people = '[]' WHERE id = ?").run(id);
+          }
+        }
+      }
 
-      const peopleRows = db
-        .prepare(
-          `SELECT p.name FROM content_people cp
-           JOIN people p ON p.id = cp.person_id
-           WHERE cp.content_id = ?`
-        )
-        .all(id) as { name: string }[];
-      db.prepare("UPDATE content SET pending_people = ? WHERE id = ?").run(
-        JSON.stringify(peopleRows.map(r => r.name)), id
-      );
+      // Demote on discard: save join data back to pending, remove from join tables
+      if (!nowAccepted && wasAccepted) {
+        const topicRows = db
+          .prepare("SELECT topic_slug FROM content_topics WHERE content_id = ?")
+          .all(id) as { topic_slug: string }[];
+        const topicNames = topicRows.map((r) => {
+          const t = db.prepare("SELECT name FROM topics WHERE slug = ?").get(r.topic_slug) as { name: string } | undefined;
+          return t ? t.name : r.topic_slug;
+        });
+        db.prepare("UPDATE content SET pending_topics = ? WHERE id = ?").run(
+          JSON.stringify(topicNames), id
+        );
 
-      syncContentTopics(id, []);
-      syncContentPeople(id, []);
+        const peopleRows = db
+          .prepare(
+            `SELECT p.name FROM content_people cp
+             JOIN people p ON p.id = cp.person_id
+             WHERE cp.content_id = ?`
+          )
+          .all(id) as { name: string }[];
+        db.prepare("UPDATE content SET pending_people = ? WHERE id = ?").run(
+          JSON.stringify(peopleRows.map(r => r.name)), id
+        );
+
+        syncContentTopics(id, []);
+        syncContentPeople(id, []);
+      }
     }
   });
 

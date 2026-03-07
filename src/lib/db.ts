@@ -164,6 +164,14 @@ function initSchema(db: Database.Database): void {
       content_ids TEXT NOT NULL DEFAULT '[]',
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS silos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      synthesis TEXT,
+      synthesized_at TEXT,
+      created_at TEXT NOT NULL
+    );
   `);
 
   // FTS5 virtual table — CREATE VIRTUAL TABLE doesn't support IF NOT EXISTS
@@ -186,6 +194,10 @@ function initSchema(db: Database.Database): void {
     db.exec("ALTER TABLE content ADD COLUMN pending_topics TEXT NOT NULL DEFAULT '[]'");
     db.exec("ALTER TABLE content ADD COLUMN pending_people TEXT NOT NULL DEFAULT '[]'");
     migrateNonAcceptedTopicsAndPeople(db);
+  }
+
+  if (!contentColumns.some((c) => c.name === "silo_id")) {
+    db.exec("ALTER TABLE content ADD COLUMN silo_id INTEGER REFERENCES silos(id) ON DELETE CASCADE");
   }
 
   const subColumns = db.prepare("PRAGMA table_info(subscriptions)").all() as { name: string }[];
