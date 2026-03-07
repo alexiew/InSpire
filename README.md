@@ -4,7 +4,7 @@ Personal knowledge distillery. Feed it YouTube videos, podcast episodes, and blo
 
 ## How It Works
 
-1. **Subscribe** to YouTube channels, podcast feeds, or blog RSS feeds — or paste individual URLs
+1. **Subscribe** to YouTube channels, podcast feeds, or blog RSS feeds — or paste individual URLs and transcripts
 2. **Process** — transcripts and article text are extracted automatically, then AI identifies topics, claims, and key people mentioned
 3. **Review** — processed content appears in your inbox. Accept what's valuable, discard the rest
 4. **Explore** — browse your knowledge base by topic or person. Full-text search across everything
@@ -12,6 +12,7 @@ Personal knowledge distillery. Feed it YouTube videos, podcast episodes, and blo
 6. **Map** — interactive force-directed graph shows how topics and people relate through shared content
 7. **Journal** — save text highlights from any content, compile them into printable documents
 8. **Newsroom** — daily briefings with trending topics, rising people, and AI-generated summaries
+9. **Silos** — isolated research containers for focused topic exploration. Submit content, accept/discard, and generate cross-content synthesis — all without touching your main knowledge base
 
 ## Content Lifecycle
 
@@ -59,7 +60,7 @@ Claude will read the project's `CLAUDE.md`, verify prerequisites, and launch the
 - **Database**: SQLite via better-sqlite3 (local file, zero config)
 - **Transcript extraction**: `summarize` CLI by [@steipete](https://github.com/steipete/summarize)
 - **AI extraction & synthesis**: `claude --print` CLI
-- **Testing**: Vitest (205+ tests)
+- **Testing**: Vitest (224+ tests)
 - **Visualization**: react-force-graph-2d for the topic/people network map
 
 ## Running Tests
@@ -77,7 +78,7 @@ src/
   components/       # React components (UI, layout, content)
   hooks/            # SWR data fetching hooks
   lib/              # Core logic (content, topics, people, extraction,
-                    #   synthesis, subscriptions, journal, briefings)
+                    #   synthesis, subscriptions, journal, briefings, silos)
   __tests__/        # Vitest test suites
 data/
   inspire.db        # SQLite database (created on first launch, gitignored)
