@@ -12,9 +12,10 @@ import { Textarea } from "@/components/ui/textarea";
 interface UrlFormProps {
   onSubmitted: () => void;
   initialTopics?: string[];
+  apiEndpoint?: string;
 }
 
-export function UrlForm({ onSubmitted, initialTopics }: UrlFormProps) {
+export function UrlForm({ onSubmitted, initialTopics, apiEndpoint = "/api/content" }: UrlFormProps) {
   const [mode, setMode] = useState<"url" | "paste">("url");
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
@@ -43,7 +44,7 @@ export function UrlForm({ onSubmitted, initialTopics }: UrlFormProps) {
             ...(hints.trim() ? { extractionHints: hints.trim() } : {}),
           };
 
-      const res = await fetch("/api/content", {
+      const res = await fetch(apiEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
