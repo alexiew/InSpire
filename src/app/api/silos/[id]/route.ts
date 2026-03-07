@@ -33,6 +33,10 @@ export async function POST(
   const body = await request.json();
   const { url, title, transcript } = body;
 
+  const hints = typeof body.extractionHints === "string" && body.extractionHints.trim()
+    ? body.extractionHints.trim()
+    : undefined;
+
   // Manual import: title + transcript
   if (typeof title === "string" && title.trim() && typeof transcript === "string" && transcript.trim()) {
     const sourceId = `manual-${Date.now()}`;
@@ -40,6 +44,7 @@ export async function POST(
     updateContent(item.id, {
       title: title.trim(),
       transcript: transcript.trim(),
+      ...(hints ? { extractionHints: hints } : {}),
     });
     processContent(item.id).catch(() => {});
     return NextResponse.json(item, { status: 201 });
@@ -64,6 +69,9 @@ export async function POST(
   }
 
   const item = createContent(url, sourceId, sourceType, siloId);
+  if (hints) {
+    updateContent(item.id, { extractionHints: hints });
+  }
   processContent(item.id).catch(() => {});
 
   return NextResponse.json(item, { status: 201 });
