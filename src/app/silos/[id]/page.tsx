@@ -5,13 +5,20 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, X, Sparkles, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, X, Sparkles, Loader2, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/content/status-badge";
+import { SelectionJournal } from "@/components/content/selection-journal";
 import { UrlForm } from "@/components/content/url-form";
 import { useSilo } from "@/hooks/use-silos";
 import Link from "next/link";
+
+interface SourceResult {
+  id: string;
+  title: string;
+  reason: string;
+}
 
 export default function SiloDetailPage({
   params,
@@ -23,6 +30,8 @@ export default function SiloDetailPage({
   const router = useRouter();
   const [synthesizing, setSynthesizing] = useState(false);
   const [synthError, setSynthError] = useState("");
+  const [sourceResult, setSourceResult] = useState<{ text: string; sources: SourceResult[] } | null>(null);
+  const [findingSource, setFindingSource] = useState(false);
 
   if (!silo) {
     return (
@@ -52,6 +61,28 @@ export default function SiloDetailPage({
       setSynthError(data.error || "Synthesis failed");
     }
     setSynthesizing(false);
+  }
+
+  async function handleSource(text: string) {
+    setFindingSource(true);
+    setSourceResult(null);
+    const contentIds = silo!.items.filter((i) => i.status === "accepted").map((i) => i.id);
+
+    try {
+      const res = await fetch("/api/source", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, contentIds }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setSourceResult({ text, sources: json.sources });
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setFindingSource(false);
+    }
   }
 
   const processing = silo.items.filter((i) => i.status === "processing");
@@ -211,9 +242,55 @@ export default function SiloDetailPage({
           </p>
         )}
         {silo.synthesis && (
-          <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-            {silo.synthesis}
-          </div>
+          <SelectionJournal source="silo-synthesis" showSource onSource={handleSource}>
+            <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+              {silo.synthesis}
+            </div>
+          </SelectionJournal>
+        )}
+
+        {findingSource && (
+          <Card className="p-4 border-primary/30 bg-primary/5">
+            <p className="text-sm text-muted-foreground animate-pulse">
+              <Loader2 className="inline h-3 w-3 animate-spin mr-1" />
+              Finding source...
+            </p>
+          </Card>
+        )}
+
+        {sourceResult && (
+          <Card className="p-4 border-primary/30 bg-primary/5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 space-y-3">
+                <p className="text-xs font-medium text-primary">
+                  <FileSearch className="inline h-3 w-3 mr-1" />
+                  Source for: &ldquo;{sourceResult.text.slice(0, 100)}{sourceResult.text.length > 100 ? "..." : ""}&rdquo;
+                </p>
+                {sourceResult.sources.length > 0 ? (
+                  <ul className="space-y-2">
+                    {sourceResult.sources.map((s) => (
+                      <li key={s.id} className="text-sm">
+                        <Link href={`/content/${s.id}`} className="font-medium text-primary hover:underline">
+                          {s.title}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">{s.reason}</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No specific source identified for this passage.</p>
+                )}
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0 shrink-0"
+                onClick={() => setSourceResult(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </Card>
         )}
       </div>
     </div>

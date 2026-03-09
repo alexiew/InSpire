@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2, Zap, X, ChevronDown, ChevronRight, Printer } from "lucide-react";
+import { Loader2, Zap, X, ChevronDown, ChevronRight, Printer, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SelectionJournal } from "@/components/content/selection-journal";
@@ -66,7 +66,13 @@ function VelocityCard({ item, href }: { item: Velocity; href: string }) {
   );
 }
 
-function PastBriefingCard({ briefing, onExplain }: { briefing: Briefing; onExplain: (text: string) => void }) {
+interface SourceResult {
+  id: string;
+  title: string;
+  reason: string;
+}
+
+function PastBriefingCard({ briefing, onExplain, onSource }: { briefing: Briefing; onExplain: (text: string) => void; onSource: (text: string, contentIds: string[]) => void }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -85,7 +91,7 @@ function PastBriefingCard({ briefing, onExplain }: { briefing: Briefing; onExpla
       </button>
       {expanded && (
         <div className="border-t px-6 py-4">
-          <SelectionJournal source="briefing" showExplain onExplain={onExplain}>
+          <SelectionJournal source="briefing" showExplain onExplain={onExplain} showSource onSource={(text) => onSource(text, briefing.contentIds)}>
             <div className="prose prose-sm max-w-none whitespace-pre-wrap">
               {briefing.content}
             </div>
@@ -102,6 +108,8 @@ export default function NewsroomPage() {
   const [error, setError] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<{ text: string; content: string } | null>(null);
   const [explaining, setExplaining] = useState(false);
+  const [sourceResult, setSourceResult] = useState<{ text: string; sources: SourceResult[] } | null>(null);
+  const [findingSource, setFindingSource] = useState(false);
 
   const briefing = data?.briefing ?? null;
   const velocities = (data?.velocities ?? []) as Velocity[];
@@ -154,6 +162,31 @@ export default function NewsroomPage() {
       setError("Failed to explain selection");
     } finally {
       setExplaining(false);
+    }
+  }
+
+  async function handleSource(text: string, contentIds: string[]) {
+    setFindingSource(true);
+    setSourceResult(null);
+
+    try {
+      const res = await fetch("/api/source", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, contentIds }),
+      });
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError(json.error || "Failed to find source");
+        return;
+      }
+
+      setSourceResult({ text, sources: json.sources });
+    } catch {
+      setError("Failed to find source");
+    } finally {
+      setFindingSource(false);
     }
   }
 
@@ -226,7 +259,7 @@ export default function NewsroomPage() {
               {new Date(briefing.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
             </p>
           </div>
-          <SelectionJournal source="briefing" showExplain onExplain={handleExplain}>
+          <SelectionJournal source="briefing" showExplain onExplain={handleExplain} showSource onSource={(text) => handleSource(text, briefing.contentIds)}>
             <div className="prose prose-sm max-w-none whitespace-pre-wrap">
               {briefing.content}
             </div>
@@ -275,11 +308,55 @@ export default function NewsroomPage() {
         </Card>
       )}
 
+      {findingSource && (
+        <Card className="p-6 border-primary/30 bg-primary/5 print:hidden">
+          <p className="text-sm text-muted-foreground animate-pulse">
+            <Loader2 className="inline h-3 w-3 animate-spin mr-1" />
+            Finding source...
+          </p>
+        </Card>
+      )}
+
+      {sourceResult && (
+        <Card className="p-6 border-primary/30 bg-primary/5 print:hidden">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 space-y-3">
+              <p className="text-xs font-medium text-primary">
+                <FileSearch className="inline h-3 w-3 mr-1" />
+                Source for: &ldquo;{sourceResult.text.slice(0, 100)}{sourceResult.text.length > 100 ? "..." : ""}&rdquo;
+              </p>
+              {sourceResult.sources.length > 0 ? (
+                <ul className="space-y-2">
+                  {sourceResult.sources.map((s) => (
+                    <li key={s.id} className="text-sm">
+                      <Link href={`/content/${s.id}`} className="font-medium text-primary hover:underline">
+                        {s.title}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">{s.reason}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">No specific source identified for this passage.</p>
+              )}
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0 shrink-0"
+              onClick={() => setSourceResult(null)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {pastBriefings.length > 0 && (
         <div className="space-y-3 print:hidden">
           <h2 className="text-sm font-medium text-muted-foreground">Past Briefings</h2>
           {pastBriefings.map((past) => (
-            <PastBriefingCard key={past.id} briefing={past} onExplain={handleExplain} />
+            <PastBriefingCard key={past.id} briefing={past} onExplain={handleExplain} onSource={handleSource} />
           ))}
         </div>
       )}

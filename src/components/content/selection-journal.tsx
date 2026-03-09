@@ -1,10 +1,10 @@
 // ABOUTME: Floating toolbar that appears on text selection.
-// ABOUTME: Offers Journal, Lookup, and optional Explain actions for selected text.
+// ABOUTME: Offers Journal, Lookup, Explain, and Show Source actions for selected text.
 
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { BookmarkPlus, Check, Search, Sparkles, Loader2 } from "lucide-react";
+import { BookmarkPlus, Check, Search, Sparkles, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SelectionJournalProps {
@@ -12,10 +12,12 @@ interface SelectionJournalProps {
   source?: string;
   showExplain?: boolean;
   onExplain?: (text: string) => void;
+  showSource?: boolean;
+  onSource?: (text: string) => void;
   children: React.ReactNode;
 }
 
-export function SelectionJournal({ contentId, source, showExplain, onExplain, children }: SelectionJournalProps) {
+export function SelectionJournal({ contentId, source, showExplain, onExplain, showSource, onSource, children }: SelectionJournalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -90,6 +92,13 @@ export function SelectionJournal({ contentId, source, showExplain, onExplain, ch
     setSelectedText("");
   }
 
+  function handleSource() {
+    if (!selectedText || !onSource) return;
+    onSource(selectedText);
+    setPosition(null);
+    setSelectedText("");
+  }
+
   return (
     <div ref={containerRef} className="relative" onMouseUp={handleMouseUp}>
       {children}
@@ -147,6 +156,17 @@ export function SelectionJournal({ contentId, source, showExplain, onExplain, ch
               >
                 <Sparkles className="h-3 w-3" />
                 Explain
+              </Button>
+            )}
+            {showSource && onSource && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="shadow-md text-xs h-7 gap-1"
+                onClick={handleSource}
+              >
+                <FileSearch className="h-3 w-3" />
+                Source
               </Button>
             )}
           </div>
