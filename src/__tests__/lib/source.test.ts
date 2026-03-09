@@ -76,6 +76,50 @@ describe("loadSourceCandidates", () => {
 
     expect(candidates).toHaveLength(0);
   });
+
+  it("uses FTS to narrow candidates when searchText is provided", async () => {
+    const { content, source } = await loadModules();
+
+    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    content.updateContent(c1.id, {
+      title: "AI Safety Research",
+      summary: "Overview of AI alignment approaches.",
+      claims: ["RLHF has limitations"],
+      status: "accepted",
+    });
+
+    const c2 = content.createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    content.updateContent(c2.id, {
+      title: "Climate Policy",
+      summary: "Carbon tax effectiveness analysis.",
+      claims: ["Carbon pricing works"],
+      status: "accepted",
+    });
+
+    const candidates = source.loadSourceCandidates([c1.id, c2.id], "alignment RLHF");
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0].title).toBe("AI Safety Research");
+  });
+
+  it("caps candidates to avoid huge prompts", async () => {
+    const { content, source } = await loadModules();
+
+    const ids: string[] = [];
+    for (let i = 0; i < 20; i++) {
+      const c = content.createContent(`https://youtube.com/watch?v=${i}`, `${i}`, "youtube");
+      content.updateContent(c.id, {
+        title: `Topic ${i}`,
+        summary: `Summary for topic ${i}`,
+        status: "accepted",
+      });
+      ids.push(c.id);
+    }
+
+    const candidates = source.loadSourceCandidates(ids);
+
+    expect(candidates.length).toBeLessThanOrEqual(15);
+  });
 });
 
 describe("buildSourcePrompt", () => {

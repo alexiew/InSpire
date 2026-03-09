@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const candidates = loadSourceCandidates(body.contentIds);
+    const candidates = loadSourceCandidates(body.contentIds, body.text);
     if (candidates.length === 0) {
       return NextResponse.json({ sources: [] });
     }

@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Loader2, Zap, X, ChevronDown, ChevronRight, Printer, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -110,6 +110,13 @@ export default function NewsroomPage() {
   const [explaining, setExplaining] = useState(false);
   const [sourceResult, setSourceResult] = useState<{ text: string; sources: SourceResult[] } | null>(null);
   const [findingSource, setFindingSource] = useState(false);
+  const sourceRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (findingSource || sourceResult) {
+      sourceRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [findingSource, sourceResult]);
 
   const briefing = data?.briefing ?? null;
   const velocities = (data?.velocities ?? []) as Velocity[];
@@ -309,7 +316,7 @@ export default function NewsroomPage() {
       )}
 
       {findingSource && (
-        <Card className="p-6 border-primary/30 bg-primary/5 print:hidden">
+        <Card ref={sourceRef} className="p-6 border-primary/30 bg-primary/5 print:hidden">
           <p className="text-sm text-muted-foreground animate-pulse">
             <Loader2 className="inline h-3 w-3 animate-spin mr-1" />
             Finding source...
@@ -318,7 +325,7 @@ export default function NewsroomPage() {
       )}
 
       {sourceResult && (
-        <Card className="p-6 border-primary/30 bg-primary/5 print:hidden">
+        <Card ref={sourceRef} className="p-6 border-primary/30 bg-primary/5 print:hidden">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 space-y-3">
               <p className="text-xs font-medium text-primary">
