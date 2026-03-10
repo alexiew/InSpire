@@ -150,12 +150,12 @@ function fetchChannelVideosViaDlp(channelId: string, maxItems: number): Promise<
   });
 }
 
-export function fetchTranscript(videoId: string): Promise<string> {
+function fetchTranscriptWithMode(videoId: string, mode: string): Promise<string> {
   const url = `https://www.youtube.com/watch?v=${videoId}`;
   return new Promise((resolve, reject) => {
     execFile(
       "summarize",
-      [url, "--youtube", "auto", "--extract"],
+      [url, "--youtube", mode, "--extract"],
       { maxBuffer: 10 * 1024 * 1024 },
       (error, stdout, stderr) => {
         if (error) {
@@ -171,4 +171,12 @@ export function fetchTranscript(videoId: string): Promise<string> {
       }
     );
   });
+}
+
+export async function fetchTranscript(videoId: string): Promise<string> {
+  try {
+    return await fetchTranscriptWithMode(videoId, "web");
+  } catch {
+    return await fetchTranscriptWithMode(videoId, "yt-dlp");
+  }
 }

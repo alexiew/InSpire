@@ -172,6 +172,26 @@ function initSchema(db: Database.Database): void {
       synthesized_at TEXT,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS qvc_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL DEFAULT '',
+      seed_text TEXT NOT NULL,
+      source_type TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      research TEXT NOT NULL DEFAULT '',
+      angle TEXT NOT NULL DEFAULT '',
+      strategy TEXT NOT NULL DEFAULT '',
+      brief TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'seed',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
 
   // FTS5 virtual table — CREATE VIRTUAL TABLE doesn't support IF NOT EXISTS
@@ -203,6 +223,9 @@ function initSchema(db: Database.Database): void {
   const subColumns = db.prepare("PRAGMA table_info(subscriptions)").all() as { name: string }[];
   if (!subColumns.some((c) => c.name === "extraction_hints")) {
     db.exec("ALTER TABLE subscriptions ADD COLUMN extraction_hints TEXT NOT NULL DEFAULT ''");
+  }
+  if (!subColumns.some((c) => c.name === "exclude_terms")) {
+    db.exec("ALTER TABLE subscriptions ADD COLUMN exclude_terms TEXT NOT NULL DEFAULT ''");
   }
 
   const journalColumns = db.prepare("PRAGMA table_info(journal_entries)").all() as { name: string }[];

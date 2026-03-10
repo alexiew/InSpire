@@ -10,9 +10,10 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const body = await request.json();
-  const updated = updateSubscription(Number(id), {
-    extractionHints: body.extractionHints,
-  });
+  const updates: { extractionHints?: string; excludeTerms?: string } = {};
+  if (body.extractionHints !== undefined) updates.extractionHints = body.extractionHints;
+  if (body.excludeTerms !== undefined) updates.excludeTerms = body.excludeTerms;
+  const updated = updateSubscription(Number(id), updates);
   if (!updated) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

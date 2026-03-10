@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, Trash2, RefreshCw, Pencil, Check, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ interface Subscription {
   sourceType: string;
   name: string;
   extractionHints: string;
+  excludeTerms: string;
   lastCheckedAt: string | null;
 }
 
@@ -23,18 +24,19 @@ function SubscriptionCard({
   sub,
   formatLastChecked,
   onDelete,
-  onSaveHints,
+  onSave,
 }: {
   sub: Subscription;
   formatLastChecked: (d: string | null) => string;
   onDelete: (id: number) => void;
-  onSaveHints: (id: number, hints: string) => void;
+  onSave: (id: number, updates: { extractionHints: string; excludeTerms: string }) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [hints, setHints] = useState(sub.extractionHints);
+  const [excludeTerms, setExcludeTerms] = useState(sub.excludeTerms);
 
   function handleSave() {
-    onSaveHints(sub.id, hints);
+    onSave(sub.id, { extractionHints: hints, excludeTerms });
     setEditing(false);
   }
 
@@ -52,7 +54,7 @@ function SubscriptionCard({
             variant="ghost"
             size="sm"
             onClick={() => setEditing(!editing)}
-            title="Extraction hints"
+            title="Settings"
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -68,10 +70,16 @@ function SubscriptionCard({
       {editing && (
         <CardContent className="pt-0 space-y-2">
           <Textarea
-            placeholder="Extraction hints for this channel (e.g., 'Include step-by-step instructions and tool configurations')"
+            placeholder="Extraction hints (e.g., 'Include step-by-step instructions')"
             value={hints}
             onChange={(e) => setHints(e.target.value)}
             rows={2}
+            className="text-sm"
+          />
+          <Input
+            placeholder="Exclude terms, comma-separated (e.g., #Shorts, Clip)"
+            value={excludeTerms}
+            onChange={(e) => setExcludeTerms(e.target.value)}
             className="text-sm"
           />
           <div className="flex justify-end">
@@ -82,9 +90,14 @@ function SubscriptionCard({
           </div>
         </CardContent>
       )}
-      {!editing && sub.extractionHints && (
-        <CardContent className="pt-0">
-          <p className="text-xs text-muted-foreground">{sub.extractionHints}</p>
+      {!editing && (sub.extractionHints || sub.excludeTerms) && (
+        <CardContent className="pt-0 space-y-1">
+          {sub.extractionHints && (
+            <p className="text-xs text-muted-foreground">{sub.extractionHints}</p>
+          )}
+          {sub.excludeTerms && (
+            <p className="text-xs text-muted-foreground">Exclude: {sub.excludeTerms}</p>
+          )}
         </CardContent>
       )}
     </Card>
@@ -101,6 +114,13 @@ export default function SubscriptionsPage() {
   const [maxItems, setMaxItems] = useState("15");
   const [checkResult, setCheckResult] = useState("");
   const [error, setError] = useState("");
+  const [minWords, setMinWords] = useState("");
+
+  useEffect(() => {
+    fetch("/api/settings?key=min_transcript_words")
+      .then((r) => r.json())
+      .then((d) => setMinWords(d.value || "0"));
+  }, []);
 
   async function handleSubscribe(e: React.FormEvent) {
     e.preventDefault();
@@ -137,13 +157,22 @@ export default function SubscriptionsPage() {
     mutate();
   }
 
-  async function handleSaveHints(id: number, hints: string) {
+  async function handleSave(id: number, updates: { extractionHints: string; excludeTerms: string }) {
     await fetch(`/api/subscriptions/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ extractionHints: hints }),
+      body: JSON.stringify(updates),
     });
     mutate();
+  }
+
+  async function handleMinWordsChange(value: string) {
+    setMinWords(value);
+    await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "min_transcript_words", value }),
+    });
   }
 
   async function handleCheckNow() {
@@ -228,6 +257,20 @@ export default function SubscriptionsPage() {
 
       {hasSubs && (
         <div className="flex items-center justify-end gap-3">
+          <div className="flex items-center gap-1.5 mr-auto">
+            <label className="text-xs text-muted-foreground whitespace-nowrap" htmlFor="min-words">
+              Min words
+            </label>
+            <Input
+              id="min-words"
+              type="number"
+              min={0}
+              value={minWords}
+              onChange={(e) => handleMinWordsChange(e.target.value)}
+              className="w-20 h-8 text-sm text-center"
+              title="Auto-discard imported content with fewer words than this (0 = disabled)"
+            />
+          </div>
           {checkResult && (
             <p className="text-sm text-muted-foreground">{checkResult}</p>
           )}
@@ -255,7 +298,7 @@ export default function SubscriptionsPage() {
               sub={sub}
               formatLastChecked={formatLastChecked}
               onDelete={handleDelete}
-              onSaveHints={handleSaveHints}
+              onSave={handleSave}
             />
           ))}
         </div>

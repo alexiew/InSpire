@@ -10,6 +10,15 @@ import { useRecent } from "@/hooks/use-recent";
 export default function RecentPage() {
   const { data: items, mutate } = useRecent();
 
+  async function handleStatusChange(id: string, status: "accepted" | "discarded") {
+    await fetch(`/api/content/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    mutate();
+  }
+
   return (
     <div className="mx-auto max-w-4xl p-6 space-y-8">
       <UrlForm onSubmitted={() => mutate()} />
@@ -17,7 +26,12 @@ export default function RecentPage() {
       {items && items.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
-            <ContentCard key={item.id} item={item} />
+            <ContentCard
+              key={item.id}
+              item={item}
+              onAccept={() => handleStatusChange(item.id, "accepted")}
+              onDiscard={() => handleStatusChange(item.id, "discarded")}
+            />
           ))}
         </div>
       ) : items ? (

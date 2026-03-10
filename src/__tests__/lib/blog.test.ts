@@ -2,7 +2,7 @@
 // ABOUTME: Verifies parseBlogFeed with RSS and Atom formats, and detectFeedType.
 
 import { describe, it, expect } from "vitest";
-import { parseBlogFeed } from "@/lib/blog";
+import { parseBlogFeed, parsePageTitle } from "@/lib/blog";
 import { detectFeedType } from "@/lib/podcast";
 
 const SAMPLE_BLOG_RSS = `<?xml version="1.0" encoding="UTF-8"?>
@@ -109,6 +109,35 @@ describe("parseBlogFeed", () => {
     const feed = parseBlogFeed(xml);
     expect(feed.articles).toHaveLength(1);
     expect(feed.articles[0].title).toBe("Has link");
+  });
+});
+
+describe("parsePageTitle", () => {
+  it("extracts title from standard HTML", () => {
+    const html = `<html><head><title>Getting Started - OpenClaw</title></head><body></body></html>`;
+    expect(parsePageTitle(html)).toBe("Getting Started - OpenClaw");
+  });
+
+  it("handles title with surrounding whitespace", () => {
+    const html = `<html><head><title>  My Page  </title></head></html>`;
+    expect(parsePageTitle(html)).toBe("My Page");
+  });
+
+  it("handles title spanning multiple lines", () => {
+    const html = `<html><head><title>
+      Multi Line Title
+    </title></head></html>`;
+    expect(parsePageTitle(html)).toBe("Multi Line Title");
+  });
+
+  it("returns empty string when no title tag", () => {
+    const html = `<html><head></head><body>No title here</body></html>`;
+    expect(parsePageTitle(html)).toBe("");
+  });
+
+  it("returns empty string for empty title tag", () => {
+    const html = `<html><head><title></title></head></html>`;
+    expect(parsePageTitle(html)).toBe("");
   });
 });
 

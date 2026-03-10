@@ -32,6 +32,13 @@ export async function PATCH(
 
   const updates: Record<string, unknown> = {};
 
+  if (body.title !== undefined) {
+    if (typeof body.title !== "string") {
+      return NextResponse.json({ error: "title must be a string" }, { status: 400 });
+    }
+    updates.title = body.title;
+  }
+
   if (body.topics !== undefined) {
     if (!Array.isArray(body.topics) || !body.topics.every((t: unknown) => typeof t === "string")) {
       return NextResponse.json({ error: "topics must be an array of strings" }, { status: 400 });

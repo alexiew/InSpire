@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SelectionJournal } from "@/components/content/selection-journal";
 import { Sparkles, RefreshCw } from "lucide-react";
 
 interface SynthesisSectionProps {
@@ -98,9 +99,11 @@ export function SynthesisSection({
       )}
 
       {synthesis && (
-        <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-          {synthesis}
-        </div>
+        <SelectionJournal source={`topic:${slug}`}>
+          <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+            {synthesis}
+          </div>
+        </SelectionJournal>
       )}
 
       {synthesizedAt && !generating && (

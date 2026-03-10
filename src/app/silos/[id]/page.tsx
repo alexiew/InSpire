@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/content/status-badge";
 import { SelectionJournal } from "@/components/content/selection-journal";
+import { EditableTitle } from "@/components/content/editable-title";
 import { UrlForm } from "@/components/content/url-form";
 import { useSilo } from "@/hooks/use-silos";
 import Link from "next/link";
@@ -111,7 +112,14 @@ export default function SiloDetailPage({
           {processing.map((item) => (
             <Card key={item.id} className="animate-pulse">
               <CardHeader className="py-3">
-                <CardTitle className="text-sm">{item.title || "Processing..."}</CardTitle>
+                <CardTitle className="text-sm">
+                  <EditableTitle
+                    contentId={item.id}
+                    title={item.title}
+                    fallback={item.url || "Processing..."}
+                    onUpdated={() => mutate()}
+                  />
+                </CardTitle>
               </CardHeader>
             </Card>
           ))}
@@ -125,7 +133,14 @@ export default function SiloDetailPage({
             <Card key={item.id} className="border-destructive/30">
               <CardHeader className="py-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">{item.title || item.url}</CardTitle>
+                  <CardTitle className="text-sm">
+                    <EditableTitle
+                      contentId={item.id}
+                      title={item.title}
+                      fallback={item.url}
+                      onUpdated={() => mutate()}
+                    />
+                  </CardTitle>
                   <StatusBadge status={item.status} />
                 </div>
                 {item.error && (
@@ -145,7 +160,7 @@ export default function SiloDetailPage({
               <CardHeader className="py-3">
                 <div className="flex items-start justify-between gap-2">
                   <Link href={`/content/${item.id}`} className="flex-1 min-w-0">
-                    <CardTitle className="text-sm">{item.title}</CardTitle>
+                    <CardTitle className="text-sm">{item.title || item.url}</CardTitle>
                     {item.author && <CardDescription>{item.author}</CardDescription>}
                   </Link>
                   <div className="flex gap-1 shrink-0">
@@ -189,7 +204,7 @@ export default function SiloDetailPage({
               <CardHeader className="py-3">
                 <div className="flex items-start justify-between gap-2">
                   <Link href={`/content/${item.id}`} className="flex-1 min-w-0">
-                    <CardTitle className="text-sm">{item.title}</CardTitle>
+                    <CardTitle className="text-sm">{item.title || item.url}</CardTitle>
                     {item.author && <CardDescription>{item.author}</CardDescription>}
                   </Link>
                   <StatusBadge status={item.status} />

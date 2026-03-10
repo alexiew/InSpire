@@ -4,18 +4,23 @@
 import { getContent, updateContent } from "./content";
 import { fetchMetadata, fetchTranscript } from "./youtube";
 import { fetchPodcastTranscript } from "./podcast";
-import { fetchArticleText } from "./blog";
+import { fetchArticleText, fetchPageTitle } from "./blog";
 import { extract, filterAuthor } from "./extract";
 import { listTopics, rebuildTopicIndex } from "./topics";
 
-export async function processContent(id: string): Promise<void> {
+interface ProcessOptions {
+  minTranscriptWords?: number;
+}
+
+export async function processContent(id: string, options?: ProcessOptions): Promise<void> {
   try {
     const item = getContent(id);
     if (!item) {
       throw new Error(`Content ${id} not found`);
     }
 
-    // Fetch metadata (YouTube only — podcast metadata is set at creation time)
+    // Fetch metadata (YouTube via oEmbed, blog via HTML title tag)
+    // Podcast metadata is set at creation time from the RSS feed.
     if (item.sourceType === "youtube") {
       const metadata = await fetchMetadata(item.sourceId);
       updateContent(id, {
@@ -23,6 +28,11 @@ export async function processContent(id: string): Promise<void> {
         author: metadata.author,
         thumbnailUrl: metadata.thumbnailUrl,
       });
+    } else if (item.sourceType === "blog" && !item.title) {
+      const title = await fetchPageTitle(item.url);
+      if (title) {
+        updateContent(id, { title });
+      }
     }
 
     // Fetch transcript / article text (skip if already provided)
@@ -36,6 +46,16 @@ export async function processContent(id: string): Promise<void> {
         transcript = await fetchTranscript(item.sourceId);
       }
       updateContent(id, { transcript });
+    }
+
+    // Auto-discard if transcript is too short (subscription filter)
+    const minWords = options?.minTranscriptWords ?? 0;
+    if (minWords > 0) {
+      const wordCount = transcript.split(/\s+/).filter(Boolean).length;
+      if (wordCount < minWords) {
+        updateContent(id, { status: "discarded" });
+        return;
+      }
     }
 
     // Extract structured knowledge, merging with any pre-assigned topics

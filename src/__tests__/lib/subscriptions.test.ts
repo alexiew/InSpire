@@ -97,6 +97,58 @@ describe("updateSubscription", () => {
   });
 });
 
+describe("exclude terms", () => {
+  it("stores exclude terms on creation", async () => {
+    const { createSubscription } = await loadModules();
+    const sub = createSubscription("youtube", "UC1234567890abcdefghij", "Test", "", "#Shorts, #Short");
+    expect(sub.excludeTerms).toBe("#Shorts, #Short");
+  });
+
+  it("defaults to empty string", async () => {
+    const { createSubscription } = await loadModules();
+    const sub = createSubscription("youtube", "UC1234567890abcdefghij", "Test");
+    expect(sub.excludeTerms).toBe("");
+  });
+
+  it("updates exclude terms", async () => {
+    const { createSubscription, updateSubscription } = await loadModules();
+    const sub = createSubscription("youtube", "UC1234567890abcdefghij", "Test");
+    const updated = updateSubscription(sub.id, { excludeTerms: "#Shorts" });
+    expect(updated?.excludeTerms).toBe("#Shorts");
+  });
+});
+
+describe("titleMatchesExcludeTerms", () => {
+  it("returns false when no exclude terms", async () => {
+    const { titleMatchesExcludeTerms } = await loadModules();
+    expect(titleMatchesExcludeTerms("Some Video #Shorts", "")).toBe(false);
+  });
+
+  it("matches a single term case-insensitively", async () => {
+    const { titleMatchesExcludeTerms } = await loadModules();
+    expect(titleMatchesExcludeTerms("My Video #Shorts", "#Shorts")).toBe(true);
+    expect(titleMatchesExcludeTerms("My Video #shorts", "#Shorts")).toBe(true);
+    expect(titleMatchesExcludeTerms("My Video #SHORTS", "#Shorts")).toBe(true);
+  });
+
+  it("matches any of multiple comma-separated terms", async () => {
+    const { titleMatchesExcludeTerms } = await loadModules();
+    expect(titleMatchesExcludeTerms("Quick Clip", "#Shorts, Clip")).toBe(true);
+    expect(titleMatchesExcludeTerms("My Video #Shorts", "#Shorts, Clip")).toBe(true);
+    expect(titleMatchesExcludeTerms("Full Episode", "#Shorts, Clip")).toBe(false);
+  });
+
+  it("ignores whitespace around terms", async () => {
+    const { titleMatchesExcludeTerms } = await loadModules();
+    expect(titleMatchesExcludeTerms("My Video #Shorts", "  #Shorts  ,  Clip  ")).toBe(true);
+  });
+
+  it("ignores empty terms from extra commas", async () => {
+    const { titleMatchesExcludeTerms } = await loadModules();
+    expect(titleMatchesExcludeTerms("Normal Video", ",,,")).toBe(false);
+  });
+});
+
 describe("contentExists", () => {
   it("returns false when source_id not in database", async () => {
     const { contentExists } = await loadModules();

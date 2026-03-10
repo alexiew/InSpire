@@ -97,6 +97,18 @@ export async function fetchBlogFeed(feedUrl: string): Promise<BlogFeed> {
   return parseBlogFeed(xml);
 }
 
+export function parsePageTitle(html: string): string {
+  const match = html.match(/<title>([\s\S]*?)<\/title>/i);
+  return match?.[1]?.trim() || "";
+}
+
+export async function fetchPageTitle(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) return "";
+  const html = await res.text();
+  return parsePageTitle(html);
+}
+
 export function fetchArticleText(articleUrl: string): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(
