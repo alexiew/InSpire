@@ -2,7 +2,7 @@
 // ABOUTME: Returns topic details including content IDs and cached synthesis.
 
 import { NextRequest, NextResponse } from "next/server";
-import { getTopic, deleteTopic } from "@/lib/topics";
+import { getTopic, deleteTopic, listSynthesisHistory } from "@/lib/topics";
 import { getContent } from "@/lib/content";
 
 export async function GET(
@@ -20,7 +20,9 @@ export async function GET(
     .map((id) => getContent(id))
     .filter(Boolean);
 
-  return NextResponse.json({ ...topic, items });
+  const synthesisHistory = listSynthesisHistory(slug);
+
+  return NextResponse.json({ ...topic, items, synthesisHistory });
 }
 
 export async function DELETE(
