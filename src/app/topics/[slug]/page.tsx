@@ -105,8 +105,10 @@ export default function TopicDetailPage({
 
       <SynthesisSection
         slug={slug}
+        topicName={topic.name}
         synthesis={topic.synthesis}
         synthesizedAt={topic.synthesizedAt}
+        synthesisHistory={topic.synthesisHistory ?? []}
         itemCount={topic.contentIds.length}
         onSynthesized={() => mutate()}
       />
