@@ -374,3 +374,40 @@ describe("getLatestSynthesisRecord", () => {
     expect(getLatestSynthesisRecord("empty-topic")).toBeUndefined();
   });
 });
+
+describe("listSynthesisHistory", () => {
+  it("returns all synthesis records for a topic in reverse chronological order", async () => {
+    const {
+      createContent,
+      updateContent,
+      rebuildTopicIndex,
+      updateTopicSynthesis,
+      listSynthesisHistory,
+    } = await loadModules();
+
+    const c1 = createContent("https://youtube.com/watch?v=a", "a", "youtube");
+    const c2 = createContent("https://youtube.com/watch?v=b", "b", "youtube");
+    updateContent(c1.id, { topics: ["sleep"], status: "accepted" });
+    updateContent(c2.id, { topics: ["sleep"], status: "accepted" });
+
+    rebuildTopicIndex();
+    updateTopicSynthesis("sleep", "First synthesis.", [c1.id]);
+    updateTopicSynthesis("sleep", "Second synthesis.", [c1.id, c2.id]);
+
+    const history = listSynthesisHistory("sleep");
+    expect(history).toHaveLength(2);
+    expect(history[0].synthesis).toBe("Second synthesis.");
+    expect(history[0].contentIds).toEqual([c1.id, c2.id]);
+    expect(history[0].id).toBeDefined();
+    expect(history[0].createdAt).toBeTruthy();
+    expect(history[1].synthesis).toBe("First synthesis.");
+    expect(history[1].contentIds).toEqual([c1.id]);
+  });
+
+  it("returns empty array for topic with no synthesis history", async () => {
+    const { createTopic, listSynthesisHistory } = await loadModules();
+
+    createTopic("empty-topic");
+    expect(listSynthesisHistory("empty-topic")).toEqual([]);
+  });
+});

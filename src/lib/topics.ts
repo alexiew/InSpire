@@ -92,6 +92,26 @@ export function updateTopicSynthesis(
   return getTopic(slug)!;
 }
 
+export interface SynthesisRecord {
+  id: number;
+  synthesis: string;
+  contentIds: string[];
+  createdAt: string;
+}
+
+export function listSynthesisHistory(slug: string): SynthesisRecord[] {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT id, synthesis, content_ids, created_at FROM synthesis_history WHERE topic_slug = ? ORDER BY id DESC")
+    .all(slug) as { id: number; synthesis: string; content_ids: string; created_at: string }[];
+  return rows.map((row) => ({
+    id: row.id,
+    synthesis: row.synthesis,
+    contentIds: JSON.parse(row.content_ids),
+    createdAt: row.created_at,
+  }));
+}
+
 export function getLatestSynthesisRecord(slug: string): { synthesis: string; contentIds: string[] } | undefined {
   const db = getDb();
   const row = db
