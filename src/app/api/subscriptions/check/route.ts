@@ -1,11 +1,17 @@
 // ABOUTME: API route for manually triggering subscription checks.
-// ABOUTME: Checks all subscriptions for new content and returns ingested count.
+// ABOUTME: Checks all (or silo-scoped) subscriptions for new content and returns ingested count.
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { listSubscriptions, checkSubscription } from "@/lib/subscriptions";
 
-export async function POST() {
-  const subs = listSubscriptions();
+export async function POST(request: NextRequest) {
+  const body = await request.json().catch(() => ({}));
+  const { siloId } = body as { siloId?: number };
+
+  const subs = typeof siloId === "number"
+    ? listSubscriptions(siloId)
+    : listSubscriptions();
+
   const results = await Promise.allSettled(
     subs.map((sub) => checkSubscription(sub.id))
   );

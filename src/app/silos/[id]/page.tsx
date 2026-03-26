@@ -5,14 +5,18 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, X, Sparkles, Loader2, FileSearch } from "lucide-react";
+import { ArrowLeft, Check, X, Sparkles, Loader2, FileSearch, RefreshCw, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/content/status-badge";
 import { SelectionJournal } from "@/components/content/selection-journal";
 import { EditableTitle } from "@/components/content/editable-title";
 import { UrlForm } from "@/components/content/url-form";
+import { SubscriptionCard } from "@/components/subscriptions/subscription-card";
 import { useSilo } from "@/hooks/use-silos";
+import { useSubscriptions } from "@/hooks/use-subscriptions";
 import Link from "next/link";
 
 interface SourceResult {
@@ -27,12 +31,22 @@ export default function SiloDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { data: silo, mutate } = useSilo(Number(id));
+  const siloId = Number(id);
+  const { data: silo, mutate } = useSilo(siloId);
+  const { data: subscriptions, mutate: mutateSubs } = useSubscriptions(siloId);
   const router = useRouter();
   const [synthesizing, setSynthesizing] = useState(false);
   const [synthError, setSynthError] = useState("");
   const [sourceResult, setSourceResult] = useState<{ text: string; sources: SourceResult[] } | null>(null);
   const [findingSource, setFindingSource] = useState(false);
+  const [subUrl, setSubUrl] = useState("");
+  const [subHints, setSubHints] = useState("");
+  const [showSubHints, setShowSubHints] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subError, setSubError] = useState("");
+  const [maxItems, setMaxItems] = useState("15");
+  const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState("");
 
   if (!silo) {
     return (
@@ -86,6 +100,74 @@ export default function SiloDetailPage({
     }
   }
 
+  async function handleSubscribe(e: React.FormEvent) {
+    e.preventDefault();
+    if (!subUrl.trim()) return;
+    setSubscribing(true);
+    setSubError("");
+    const res = await fetch("/api/subscriptions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: subUrl.trim(),
+        siloId,
+        ...(subHints.trim() ? { extractionHints: subHints.trim() } : {}),
+        ...(parseInt(maxItems, 10) !== 15 ? { maxItems: parseInt(maxItems, 10) } : {}),
+      }),
+    });
+    if (res.ok) {
+      setSubUrl("");
+      setSubHints("");
+      setShowSubHints(false);
+      setMaxItems("15");
+      mutateSubs();
+      mutate();
+    } else {
+      const data = await res.json();
+      setSubError(data.error || "Failed to subscribe");
+    }
+    setSubscribing(false);
+  }
+
+  async function handleDeleteSub(subId: number) {
+    await fetch(`/api/subscriptions/${subId}`, { method: "DELETE" });
+    mutateSubs();
+  }
+
+  async function handleSaveSub(subId: number, updates: { extractionHints: string; excludeTerms: string }) {
+    await fetch(`/api/subscriptions/${subId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    mutateSubs();
+  }
+
+  async function handleCheckSubs() {
+    setChecking(true);
+    setCheckResult("");
+    try {
+      const res = await fetch("/api/subscriptions/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siloId }),
+      });
+      const data = await res.json();
+      if (data.ingested > 0) {
+        setCheckResult(`Found ${data.ingested} new item${data.ingested === 1 ? "" : "s"}`);
+      } else if (data.checked > 0) {
+        setCheckResult("No new content found");
+      } else {
+        setCheckResult("All subscriptions are up to date");
+      }
+    } catch {
+      setCheckResult("Check failed");
+    }
+    setChecking(false);
+    mutateSubs();
+    mutate();
+  }
+
   const processing = silo.items.filter((i) => i.status === "processing");
   const ready = silo.items.filter((i) => i.status === "ready");
   const accepted = silo.items.filter((i) => i.status === "accepted");
@@ -105,6 +187,84 @@ export default function SiloDetailPage({
         onSubmitted={() => mutate()}
         apiEndpoint={`/api/silos/${id}`}
       />
+
+      <div className="border-t pt-6 space-y-4">
+        <h2 className="text-sm font-medium text-muted-foreground">Subscriptions</h2>
+        <form onSubmit={handleSubscribe} className="space-y-2">
+          <div className="flex gap-2">
+            <Input
+              placeholder="YouTube channel, podcast, or blog RSS feed URL"
+              value={subUrl}
+              onChange={(e) => setSubUrl(e.target.value)}
+              className="flex-1"
+              disabled={subscribing}
+            />
+            <Button
+              type="button"
+              variant={showSubHints ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setShowSubHints(!showSubHints)}
+              title="Extraction hints"
+            >
+              <Settings2 className="h-4 w-4" />
+            </Button>
+            <Input
+              type="number"
+              min={1}
+              value={maxItems}
+              onChange={(e) => setMaxItems(e.target.value)}
+              className="w-16 h-9 text-sm text-center"
+              title="Number of items to import"
+            />
+            <Button type="submit" disabled={!subUrl.trim() || subscribing}>
+              {subscribing && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Subscribe
+            </Button>
+          </div>
+          {showSubHints && (
+            <Textarea
+              placeholder="Extraction hints for this channel"
+              value={subHints}
+              onChange={(e) => setSubHints(e.target.value)}
+              rows={2}
+              className="text-sm"
+            />
+          )}
+        </form>
+        {subError && <p className="text-sm text-destructive">{subError}</p>}
+        {subscriptions && subscriptions.length > 0 && (
+          <>
+            <div className="flex items-center justify-end gap-3">
+              {checkResult && (
+                <p className="text-sm text-muted-foreground">{checkResult}</p>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCheckSubs}
+                disabled={checking}
+              >
+                {checking ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                )}
+                Check Now
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {subscriptions.map((sub) => (
+                <SubscriptionCard
+                  key={sub.id}
+                  sub={sub}
+                  onDelete={handleDeleteSub}
+                  onSave={handleSaveSub}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       {processing.length > 0 && (
         <div className="space-y-2">

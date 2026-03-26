@@ -6,8 +6,11 @@ import type { Subscription } from "@/lib/subscriptions";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export function useSubscriptions() {
-  return useSWR<Subscription[]>("/api/subscriptions", fetcher, {
+export function useSubscriptions(siloId?: number) {
+  const url = siloId !== undefined
+    ? `/api/subscriptions?siloId=${siloId}`
+    : "/api/subscriptions";
+  return useSWR<Subscription[]>(url, fetcher, {
     refreshInterval: 10000,
   });
 }

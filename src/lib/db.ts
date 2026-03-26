@@ -133,12 +133,18 @@ function initSchema(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS subscriptions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       source_type TEXT NOT NULL,
-      source_identifier TEXT NOT NULL UNIQUE,
+      source_identifier TEXT NOT NULL,
       name TEXT NOT NULL DEFAULT '',
       extraction_hints TEXT NOT NULL DEFAULT '',
       subscribed_at TEXT NOT NULL,
-      last_checked_at TEXT
+      last_checked_at TEXT,
+      silo_id INTEGER REFERENCES silos(id) ON DELETE CASCADE
     );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_source_silo
+      ON subscriptions(source_identifier, silo_id) WHERE silo_id IS NOT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_source_main
+      ON subscriptions(source_identifier) WHERE silo_id IS NULL;
 
     CREATE TABLE IF NOT EXISTS synthesis_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -226,6 +232,36 @@ function initSchema(db: Database.Database): void {
   }
   if (!subColumns.some((c) => c.name === "exclude_terms")) {
     db.exec("ALTER TABLE subscriptions ADD COLUMN exclude_terms TEXT NOT NULL DEFAULT ''");
+  }
+
+  if (!subColumns.some((c) => c.name === "silo_id")) {
+    // Recreate table to drop the inline UNIQUE on source_identifier
+    // and add silo_id column with partial unique indexes instead
+    db.exec(`
+      CREATE TABLE subscriptions_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_type TEXT NOT NULL,
+        source_identifier TEXT NOT NULL,
+        name TEXT NOT NULL DEFAULT '',
+        extraction_hints TEXT NOT NULL DEFAULT '',
+        exclude_terms TEXT NOT NULL DEFAULT '',
+        subscribed_at TEXT NOT NULL,
+        last_checked_at TEXT,
+        silo_id INTEGER REFERENCES silos(id) ON DELETE CASCADE
+      );
+
+      INSERT INTO subscriptions_new (id, source_type, source_identifier, name, extraction_hints, exclude_terms, subscribed_at, last_checked_at)
+        SELECT id, source_type, source_identifier, name, extraction_hints, exclude_terms, subscribed_at, last_checked_at
+        FROM subscriptions;
+
+      DROP TABLE subscriptions;
+      ALTER TABLE subscriptions_new RENAME TO subscriptions;
+
+      CREATE UNIQUE INDEX idx_subscriptions_source_silo
+        ON subscriptions(source_identifier, silo_id) WHERE silo_id IS NOT NULL;
+      CREATE UNIQUE INDEX idx_subscriptions_source_main
+        ON subscriptions(source_identifier) WHERE silo_id IS NULL;
+    `);
   }
 
   const journalColumns = db.prepare("PRAGMA table_info(journal_entries)").all() as { name: string }[];

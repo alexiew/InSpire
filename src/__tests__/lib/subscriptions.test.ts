@@ -23,7 +23,8 @@ afterEach(() => {
 async function loadModules() {
   const subscriptions = await import("@/lib/subscriptions");
   const content = await import("@/lib/content");
-  return { ...subscriptions, ...content };
+  const silos = await import("@/lib/silos");
+  return { ...subscriptions, ...content, ...silos };
 }
 
 describe("listSubscriptions", () => {
@@ -165,5 +166,87 @@ describe("contentExists", () => {
     const { createContent, contentExists } = await loadModules();
     createContent("https://example.com/ep1.mp3", "ep-001-guid", "podcast");
     expect(contentExists("ep-001-guid")).toBe(true);
+  });
+
+  it("scopes dedup to main KB when no siloId given", async () => {
+    const { createContent, createSilo, contentExists } = await loadModules();
+    const silo = createSilo("Research");
+    createContent("https://youtube.com/watch?v=abc123", "abc123", "youtube", silo.id);
+    // Content exists in silo but not in main KB
+    expect(contentExists("abc123")).toBe(false);
+  });
+
+  it("scopes dedup to specific silo", async () => {
+    const { createContent, createSilo, contentExists } = await loadModules();
+    const silo = createSilo("Research");
+    createContent("https://youtube.com/watch?v=abc123", "abc123", "youtube");
+    // Content exists in main KB but not in silo
+    expect(contentExists("abc123", silo.id)).toBe(false);
+  });
+
+  it("returns true when content exists in the same silo", async () => {
+    const { createContent, createSilo, contentExists } = await loadModules();
+    const silo = createSilo("Research");
+    createContent("https://youtube.com/watch?v=abc123", "abc123", "youtube", silo.id);
+    expect(contentExists("abc123", silo.id)).toBe(true);
+  });
+});
+
+describe("silo-scoped subscriptions", () => {
+  it("creates a subscription with siloId", async () => {
+    const { createSubscription, createSilo } = await loadModules();
+    const silo = createSilo("Research");
+    const sub = createSubscription("youtube", "UC_test_channel", "Test Channel", "", "", silo.id);
+    expect(sub.siloId).toBe(silo.id);
+  });
+
+  it("allows same source_identifier in different silos", async () => {
+    const { createSubscription, createSilo } = await loadModules();
+    const silo1 = createSilo("Silo A");
+    const silo2 = createSilo("Silo B");
+    const sub1 = createSubscription("youtube", "UC_shared", "Channel", "", "", silo1.id);
+    const sub2 = createSubscription("youtube", "UC_shared", "Channel", "", "", silo2.id);
+    expect(sub1.siloId).toBe(silo1.id);
+    expect(sub2.siloId).toBe(silo2.id);
+  });
+
+  it("allows same source_identifier in main KB and a silo", async () => {
+    const { createSubscription, createSilo } = await loadModules();
+    const silo = createSilo("Research");
+    const mainSub = createSubscription("youtube", "UC_shared", "Channel");
+    const siloSub = createSubscription("youtube", "UC_shared", "Channel", "", "", silo.id);
+    expect(mainSub.siloId).toBeUndefined();
+    expect(siloSub.siloId).toBe(silo.id);
+  });
+
+  it("rejects duplicate source_identifier within the same silo", async () => {
+    const { createSubscription, createSilo } = await loadModules();
+    const silo = createSilo("Research");
+    createSubscription("youtube", "UC_dup", "Channel", "", "", silo.id);
+    expect(() => createSubscription("youtube", "UC_dup", "Channel 2", "", "", silo.id)).toThrow();
+  });
+
+  it("lists subscriptions filtered by siloId", async () => {
+    const { createSubscription, listSubscriptions, createSilo } = await loadModules();
+    const silo = createSilo("Research");
+    createSubscription("youtube", "UC_main", "Main Channel");
+    createSubscription("youtube", "UC_silo", "Silo Channel", "", "", silo.id);
+
+    const all = listSubscriptions();
+    expect(all).toHaveLength(2);
+
+    const siloOnly = listSubscriptions(silo.id);
+    expect(siloOnly).toHaveLength(1);
+    expect(siloOnly[0].name).toBe("Silo Channel");
+  });
+
+  it("cascade-deletes subscriptions when silo is deleted", async () => {
+    const { createSubscription, listSubscriptions, createSilo, deleteSilo } = await loadModules();
+    const silo = createSilo("Temp");
+    createSubscription("youtube", "UC_temp", "Temp Channel", "", "", silo.id);
+    expect(listSubscriptions(silo.id)).toHaveLength(1);
+
+    deleteSilo(silo.id);
+    expect(listSubscriptions(silo.id)).toHaveLength(0);
   });
 });
