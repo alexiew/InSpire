@@ -141,11 +141,6 @@ function initSchema(db: Database.Database): void {
       silo_id INTEGER REFERENCES silos(id) ON DELETE CASCADE
     );
 
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_source_silo
-      ON subscriptions(source_identifier, silo_id) WHERE silo_id IS NOT NULL;
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_source_main
-      ON subscriptions(source_identifier) WHERE silo_id IS NULL;
-
     CREATE TABLE IF NOT EXISTS synthesis_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       topic_slug TEXT NOT NULL REFERENCES topics(slug) ON DELETE CASCADE,
@@ -257,12 +252,16 @@ function initSchema(db: Database.Database): void {
       DROP TABLE subscriptions;
       ALTER TABLE subscriptions_new RENAME TO subscriptions;
 
-      CREATE UNIQUE INDEX idx_subscriptions_source_silo
-        ON subscriptions(source_identifier, silo_id) WHERE silo_id IS NOT NULL;
-      CREATE UNIQUE INDEX idx_subscriptions_source_main
-        ON subscriptions(source_identifier) WHERE silo_id IS NULL;
     `);
   }
+
+  // Partial unique indexes for subscriptions — runs after migration ensures silo_id exists
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_source_silo
+      ON subscriptions(source_identifier, silo_id) WHERE silo_id IS NOT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_source_main
+      ON subscriptions(source_identifier) WHERE silo_id IS NULL;
+  `);
 
   const journalColumns = db.prepare("PRAGMA table_info(journal_entries)").all() as { name: string }[];
   if (!journalColumns.some((c) => c.name === "source")) {
