@@ -4,7 +4,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Zap, X, ChevronDown, ChevronRight, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -67,7 +66,7 @@ function VelocityCard({ item, href }: { item: Velocity; href: string }) {
   );
 }
 
-function PastBriefingCard({ briefing, onExplain, onQvc }: { briefing: Briefing; onExplain: (text: string) => void; onQvc: (text: string, briefingId: number) => void }) {
+function PastBriefingCard({ briefing, onExplain }: { briefing: Briefing; onExplain: (text: string) => void }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -86,7 +85,7 @@ function PastBriefingCard({ briefing, onExplain, onQvc }: { briefing: Briefing; 
       </button>
       {expanded && (
         <div className="border-t px-6 py-4">
-          <SelectionJournal source="briefing" showExplain onExplain={onExplain} showQvc onQvc={(text) => onQvc(text, briefing.id)}>
+          <SelectionJournal source="briefing" showExplain onExplain={onExplain}>
             <div className="prose prose-sm max-w-none whitespace-pre-wrap">
               {briefing.content}
             </div>
@@ -103,7 +102,6 @@ export default function NewsroomPage() {
   const [error, setError] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<{ text: string; content: string } | null>(null);
   const [explaining, setExplaining] = useState(false);
-  const qvcRouter = useRouter();
 
   const briefing = data?.briefing ?? null;
   const velocities = (data?.velocities ?? []) as Velocity[];
@@ -156,28 +154,6 @@ export default function NewsroomPage() {
       setError("Failed to explain selection");
     } finally {
       setExplaining(false);
-    }
-  }
-
-  async function handleQvc(text: string, briefingId: number) {
-    try {
-      const res = await fetch("/api/qvc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          seedText: text,
-          sourceType: "briefing",
-          sourceId: String(briefingId),
-        }),
-      });
-      const json = await res.json();
-      if (res.ok) {
-        qvcRouter.push(`/qvc/${json.id}`);
-      } else {
-        setError(json.error || "Failed to create QVC item");
-      }
-    } catch {
-      setError("Failed to create QVC item");
     }
   }
 
@@ -250,7 +226,7 @@ export default function NewsroomPage() {
               {new Date(briefing.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
             </p>
           </div>
-          <SelectionJournal source="briefing" showExplain onExplain={handleExplain} showQvc onQvc={(text) => handleQvc(text, briefing.id)}>
+          <SelectionJournal source="briefing" showExplain onExplain={handleExplain}>
             <div className="prose prose-sm max-w-none whitespace-pre-wrap">
               {briefing.content}
             </div>
@@ -303,7 +279,7 @@ export default function NewsroomPage() {
         <div className="space-y-3 print:hidden">
           <h2 className="text-sm font-medium text-muted-foreground">Past Briefings</h2>
           {pastBriefings.map((past) => (
-            <PastBriefingCard key={past.id} briefing={past} onExplain={handleExplain} onQvc={handleQvc} />
+            <PastBriefingCard key={past.id} briefing={past} onExplain={handleExplain} />
           ))}
         </div>
       )}

@@ -179,20 +179,6 @@ function initSchema(db: Database.Database): void {
       value TEXT NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS qvc_items (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL DEFAULT '',
-      seed_text TEXT NOT NULL,
-      source_type TEXT NOT NULL,
-      source_id TEXT NOT NULL,
-      research TEXT NOT NULL DEFAULT '',
-      angle TEXT NOT NULL DEFAULT '',
-      strategy TEXT NOT NULL DEFAULT '',
-      brief TEXT NOT NULL DEFAULT '',
-      status TEXT NOT NULL DEFAULT 'seed',
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
   `);
 
   // FTS5 virtual table — CREATE VIRTUAL TABLE doesn't support IF NOT EXISTS
@@ -304,4 +290,6 @@ function initSchema(db: Database.Database): void {
       END;
     `);
   }
+
+  db.exec("DROP TABLE IF EXISTS qvc_items");
 }

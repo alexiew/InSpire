@@ -4,7 +4,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { BookmarkPlus, Check, Search, Sparkles, FileSearch, Tv } from "lucide-react";
+import { BookmarkPlus, Check, Search, Sparkles, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SelectionJournalProps {
@@ -14,12 +14,10 @@ interface SelectionJournalProps {
   onExplain?: (text: string) => void;
   showSource?: boolean;
   onSource?: (text: string) => void;
-  showQvc?: boolean;
-  onQvc?: (text: string) => void;
   children: React.ReactNode;
 }
 
-export function SelectionJournal({ contentId, source, showExplain, onExplain, showSource, onSource, showQvc, onQvc, children }: SelectionJournalProps) {
+export function SelectionJournal({ contentId, source, showExplain, onExplain, showSource, onSource, children }: SelectionJournalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -101,13 +99,6 @@ export function SelectionJournal({ contentId, source, showExplain, onExplain, sh
     setSelectedText("");
   }
 
-  function handleQvc() {
-    if (!selectedText || !onQvc) return;
-    onQvc(selectedText);
-    setPosition(null);
-    setSelectedText("");
-  }
-
   return (
     <div ref={containerRef} className="relative" onMouseUp={handleMouseUp}>
       {children}
@@ -176,17 +167,6 @@ export function SelectionJournal({ contentId, source, showExplain, onExplain, sh
               >
                 <FileSearch className="h-3 w-3" />
                 Source
-              </Button>
-            )}
-            {showQvc && onQvc && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="shadow-md text-xs h-7 gap-1"
-                onClick={handleQvc}
-              >
-                <Tv className="h-3 w-3" />
-                QVC
               </Button>
             )}
           </div>

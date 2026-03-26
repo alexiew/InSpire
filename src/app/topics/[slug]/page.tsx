@@ -5,7 +5,7 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Trash2, Tv, Loader2 } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UrlForm } from "@/components/content/url-form";
 import { ContentCard } from "@/components/content/content-card";
@@ -21,30 +21,6 @@ export default function TopicDetailPage({
   const { slug } = use(params);
   const { data: topic, mutate } = useTopic(slug);
   const router = useRouter();
-  const [creatingQvc, setCreatingQvc] = useState(false);
-
-  async function handleQvc() {
-    if (!topic?.synthesis) return;
-    setCreatingQvc(true);
-    try {
-      const res = await fetch("/api/qvc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          seedText: topic.synthesis,
-          sourceType: "topic",
-          sourceId: slug,
-          title: topic.name,
-        }),
-      });
-      const json = await res.json();
-      if (res.ok) {
-        router.push(`/qvc/${json.id}`);
-      }
-    } finally {
-      setCreatingQvc(false);
-    }
-  }
 
   async function handleDelete() {
     if (!confirm(`Delete topic "${topic?.name}"?`)) return;
@@ -80,22 +56,10 @@ export default function TopicDetailPage({
             onLinked={() => mutate()}
           />
         </div>
-        <div className="flex gap-2">
-          {topic.synthesis && (
-            <Button size="sm" onClick={handleQvc} disabled={creatingQvc}>
-              {creatingQvc ? (
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-              ) : (
-                <Tv className="mr-1 h-4 w-4" />
-              )}
-              QVC
-            </Button>
-          )}
-          <Button variant="destructive" size="sm" onClick={handleDelete}>
-            <Trash2 className="mr-1 h-4 w-4" />
-            Delete
-          </Button>
-        </div>
+        <Button variant="destructive" size="sm" onClick={handleDelete}>
+          <Trash2 className="mr-1 h-4 w-4" />
+          Delete
+        </Button>
       </div>
 
       <UrlForm
