@@ -5,11 +5,12 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, X, Sparkles, Loader2, FileSearch, RefreshCw, Settings2 } from "lucide-react";
+import { ArrowLeft, Sparkles, Loader2, FileSearch, RefreshCw, Settings2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ContentCard } from "@/components/content/content-card";
 import { StatusBadge } from "@/components/content/status-badge";
 import { SelectionJournal } from "@/components/content/selection-journal";
 import { EditableTitle } from "@/components/content/editable-title";
@@ -315,42 +316,16 @@ export default function SiloDetailPage({
       {ready.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-medium text-muted-foreground">Ready for Review</h2>
-          {ready.map((item) => (
-            <Card key={item.id}>
-              <CardHeader className="py-3">
-                <div className="flex items-start justify-between gap-2">
-                  <Link href={`/content/${item.id}`} className="flex-1 min-w-0">
-                    <CardTitle className="text-sm">{item.title || item.url}</CardTitle>
-                    {item.author && <CardDescription>{item.author}</CardDescription>}
-                  </Link>
-                  <div className="flex gap-1 shrink-0">
-                    <Button size="sm" onClick={() => handleStatusChange(item.id, "accepted")}>
-                      <Check className="h-3 w-3 mr-1" />
-                      Accept
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleStatusChange(item.id, "discarded")}>
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              {item.summary && (
-                <CardContent className="pt-0 pb-3">
-                  <p className="text-sm text-muted-foreground line-clamp-3">{item.summary}</p>
-                  {item.topics.length > 0 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Topics: {item.topics.join(", ")}
-                    </p>
-                  )}
-                  {item.people.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      People: {item.people.join(", ")}
-                    </p>
-                  )}
-                </CardContent>
-              )}
-            </Card>
-          ))}
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {ready.map((item) => (
+              <ContentCard
+                key={item.id}
+                item={item}
+                onAccept={() => handleStatusChange(item.id, "accepted")}
+                onDiscard={() => handleStatusChange(item.id, "discarded")}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -359,33 +334,11 @@ export default function SiloDetailPage({
           <h2 className="text-sm font-medium text-muted-foreground">
             Accepted ({accepted.length})
           </h2>
-          {accepted.map((item) => (
-            <Card key={item.id} className="bg-muted/30">
-              <CardHeader className="py-3">
-                <div className="flex items-start justify-between gap-2">
-                  <Link href={`/content/${item.id}`} className="flex-1 min-w-0">
-                    <CardTitle className="text-sm">{item.title || item.url}</CardTitle>
-                    {item.author && <CardDescription>{item.author}</CardDescription>}
-                  </Link>
-                  <StatusBadge status={item.status} />
-                </div>
-              </CardHeader>
-              {(item.topics.length > 0 || item.people.length > 0) && (
-                <CardContent className="pt-0 pb-3">
-                  {item.topics.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Topics: {item.topics.join(", ")}
-                    </p>
-                  )}
-                  {item.people.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      People: {item.people.join(", ")}
-                    </p>
-                  )}
-                </CardContent>
-              )}
-            </Card>
-          ))}
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {accepted.map((item) => (
+              <ContentCard key={item.id} item={item} showStatus={false} />
+            ))}
+          </div>
         </div>
       )}
 
