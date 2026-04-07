@@ -19,6 +19,7 @@ export interface SiloWithItems extends Silo {
 
 export interface SiloListItem extends Silo {
   contentCount: number;
+  pendingCount: number;
 }
 
 interface SiloRow {
@@ -58,17 +59,20 @@ export function listSilos(): SiloListItem[] {
   const db = getDb();
   const rows = db
     .prepare(
-      `SELECT s.*, COUNT(c.id) as content_count
+      `SELECT s.*,
+              COUNT(c.id) as content_count,
+              COUNT(CASE WHEN c.status NOT IN ('accepted', 'discarded') THEN 1 END) as pending_count
        FROM silos s
        LEFT JOIN content c ON c.silo_id = s.id
        GROUP BY s.id
        ORDER BY s.created_at DESC`
     )
-    .all() as (SiloRow & { content_count: number })[];
+    .all() as (SiloRow & { content_count: number; pending_count: number })[];
 
   return rows.map((row) => ({
     ...rowToSilo(row),
     contentCount: row.content_count,
+    pendingCount: row.pending_count,
   }));
 }
 

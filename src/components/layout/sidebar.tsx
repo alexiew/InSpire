@@ -9,6 +9,7 @@ import { Inbox, BookOpen, Hash, Users, Network, Rss, BookMarked, Newspaper, Cont
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
 import { useRecent } from "@/hooks/use-recent";
+import { useSilos } from "@/hooks/use-silos";
 
 const navItems = [
   { href: "/recent", label: "Review", icon: Inbox },
@@ -26,6 +27,8 @@ export function Sidebar() {
   const pathname = usePathname();
   const { data: reviewItems } = useRecent();
   const reviewCount = reviewItems?.length ?? 0;
+  const { data: silosList } = useSilos();
+  const siloPendingCount = silosList?.reduce((sum, s) => sum + s.pendingCount, 0) ?? 0;
 
   function isActive(href: string) {
     if (href === "/") {
@@ -58,6 +61,11 @@ export function Sidebar() {
             {href === "/recent" && reviewCount > 0 && (
               <span className="ml-auto rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
                 {reviewCount}
+              </span>
+            )}
+            {href === "/silos" && siloPendingCount > 0 && (
+              <span className="ml-auto rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+                {siloPendingCount}
               </span>
             )}
           </Link>

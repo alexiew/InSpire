@@ -67,6 +67,35 @@ describe("listSilos", () => {
     expect(list[0].name).toBe("AI Ethics");
     expect(list[0].contentCount).toBe(2);
   });
+
+  it("returns silos with pending counts", async () => {
+    const { silos, content } = await loadModules();
+    const silo = silos.createSilo("AI Ethics");
+
+    // processing counts as pending
+    content.createContent("https://youtube.com/watch?v=a", "a", "youtube", silo.id);
+
+    // ready counts as pending
+    const c2 = content.createContent("https://youtube.com/watch?v=b", "b", "youtube", silo.id);
+    content.updateContent(c2.id, { title: "Ready", status: "ready" });
+
+    // error counts as pending
+    const c3 = content.createContent("https://youtube.com/watch?v=c", "c", "youtube", silo.id);
+    content.updateContent(c3.id, { title: "Errored", status: "error" });
+
+    // accepted does NOT count as pending
+    const c4 = content.createContent("https://youtube.com/watch?v=d", "d", "youtube", silo.id);
+    content.updateContent(c4.id, { title: "Accepted", status: "accepted" });
+
+    // discarded does NOT count as pending
+    const c5 = content.createContent("https://youtube.com/watch?v=e", "e", "youtube", silo.id);
+    content.updateContent(c5.id, { title: "Discarded", status: "discarded" });
+
+    const list = silos.listSilos();
+    expect(list).toHaveLength(1);
+    expect(list[0].contentCount).toBe(5);
+    expect(list[0].pendingCount).toBe(3);
+  });
 });
 
 describe("getSilo", () => {
