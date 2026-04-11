@@ -1,5 +1,5 @@
-// ABOUTME: Displays topic synthesis with generate/refresh button and version history.
-// ABOUTME: Shows past syntheses as collapsible cards with PDF download support.
+// ABOUTME: Displays synthesis with generate/refresh button and version history.
+// ABOUTME: Shared by topics and silos. Shows past syntheses as collapsible cards with PDF download.
 
 "use client";
 
@@ -8,16 +8,25 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SelectionJournal } from "@/components/content/selection-journal";
 import { Sparkles, RefreshCw, ChevronDown, ChevronRight, Download } from "lucide-react";
-import type { SynthesisRecord } from "@/lib/topics";
+export interface SynthesisRecord {
+  id: number;
+  synthesis: string;
+  contentIds: string[];
+  createdAt: string;
+}
 
 interface SynthesisSectionProps {
-  slug: string;
-  topicName: string;
+  synthesizeUrl: string;
+  name: string;
+  sourceLabel: string;
   synthesis?: string;
   synthesizedAt?: string;
   synthesisHistory: SynthesisRecord[];
   itemCount: number;
+  minItems?: number;
   onSynthesized: () => void;
+  showSource?: boolean;
+  onSource?: (text: string) => void;
 }
 
 async function downloadPdf(content: string, title: string, date: string) {
@@ -142,12 +151,12 @@ async function downloadPdf(content: string, title: string, date: string) {
 
 function PastSynthesisCard({
   record,
-  topicName,
-  slug,
+  name,
+  sourceLabel,
 }: {
   record: SynthesisRecord;
-  topicName: string;
-  slug: string;
+  name: string;
+  sourceLabel: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const dateStr = new Date(record.createdAt).toLocaleDateString(undefined, {
@@ -174,7 +183,7 @@ function PastSynthesisCard({
       </button>
       {expanded && (
         <div className="border-t px-6 py-4">
-          <SelectionJournal source={`topic:${slug}`}>
+          <SelectionJournal source={sourceLabel}>
             <div className="prose prose-sm max-w-none whitespace-pre-wrap">
               {record.synthesis}
             </div>
@@ -183,7 +192,7 @@ function PastSynthesisCard({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => downloadPdf(record.synthesis, topicName, record.createdAt)}
+              onClick={() => downloadPdf(record.synthesis, name, record.createdAt)}
             >
               <Download className="mr-1 h-4 w-4" />
               PDF
@@ -196,13 +205,17 @@ function PastSynthesisCard({
 }
 
 export function SynthesisSection({
-  slug,
-  topicName,
+  synthesizeUrl,
+  name,
+  sourceLabel,
   synthesis,
   synthesizedAt,
   synthesisHistory,
   itemCount,
+  minItems = 2,
   onSynthesized,
+  showSource,
+  onSource,
 }: SynthesisSectionProps) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
@@ -215,7 +228,7 @@ export function SynthesisSection({
     setError("");
 
     try {
-      const res = await fetch(`/api/topics/${slug}/synthesize`, {
+      const res = await fetch(synthesizeUrl, {
         method: "POST",
       });
 
@@ -233,10 +246,10 @@ export function SynthesisSection({
     }
   }
 
-  if (itemCount < 2) {
+  if (itemCount < minItems) {
     return (
       <p className="text-sm text-muted-foreground">
-        Add at least 2 content items to this topic to generate a synthesis.
+        Add at least {minItems} content {minItems === 1 ? "item" : "items"} to generate a synthesis.
       </p>
     );
   }
@@ -250,7 +263,7 @@ export function SynthesisSection({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => downloadPdf(synthesis, topicName, synthesizedAt)}
+              onClick={() => downloadPdf(synthesis, name, synthesizedAt)}
             >
               <Download className="mr-1 h-4 w-4" />
               PDF
@@ -295,7 +308,7 @@ export function SynthesisSection({
       )}
 
       {synthesis && (
-        <SelectionJournal source={`topic:${slug}`}>
+        <SelectionJournal source={sourceLabel} showSource={showSource} onSource={onSource}>
           <div className="prose prose-sm max-w-none whitespace-pre-wrap">
             {synthesis}
           </div>
@@ -317,8 +330,8 @@ export function SynthesisSection({
             <PastSynthesisCard
               key={record.id}
               record={record}
-              topicName={topicName}
-              slug={slug}
+              name={name}
+              sourceLabel={sourceLabel}
             />
           ))}
         </div>

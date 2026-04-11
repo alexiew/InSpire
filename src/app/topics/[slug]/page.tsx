@@ -68,8 +68,9 @@ export default function TopicDetailPage({
       />
 
       <SynthesisSection
-        slug={slug}
-        topicName={topic.name}
+        synthesizeUrl={`/api/topics/${slug}/synthesize`}
+        name={topic.name}
+        sourceLabel={`topic:${slug}`}
         synthesis={topic.synthesis}
         synthesizedAt={topic.synthesizedAt}
         synthesisHistory={topic.synthesisHistory ?? []}

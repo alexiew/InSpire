@@ -2,7 +2,7 @@
 // ABOUTME: GET returns silo with content items, POST submits content, DELETE removes silo.
 
 import { NextRequest, NextResponse } from "next/server";
-import { getSilo, deleteSilo } from "@/lib/silos";
+import { getSilo, deleteSilo, listSiloSynthesisHistory } from "@/lib/silos";
 import { createContent, updateContent, type SourceType } from "@/lib/content";
 import { extractVideoId } from "@/lib/youtube";
 import { processContent } from "@/lib/process-content";
@@ -16,7 +16,8 @@ export async function GET(
   if (!silo) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  return NextResponse.json(silo);
+  const synthesisHistory = listSiloSynthesisHistory(silo.id);
+  return NextResponse.json({ ...silo, synthesisHistory });
 }
 
 export async function POST(

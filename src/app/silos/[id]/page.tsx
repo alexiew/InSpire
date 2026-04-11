@@ -5,15 +5,15 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Sparkles, Loader2, FileSearch, RefreshCw, Settings2, X } from "lucide-react";
+import { ArrowLeft, Loader2, FileSearch, RefreshCw, Settings2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContentCard } from "@/components/content/content-card";
 import { StatusBadge } from "@/components/content/status-badge";
-import { SelectionJournal } from "@/components/content/selection-journal";
 import { EditableTitle } from "@/components/content/editable-title";
+import { SynthesisSection } from "@/components/topics/synthesis-section";
 import { UrlForm } from "@/components/content/url-form";
 import { SubscriptionCard } from "@/components/subscriptions/subscription-card";
 import { useSilo } from "@/hooks/use-silos";
@@ -36,8 +36,6 @@ export default function SiloDetailPage({
   const { data: silo, mutate } = useSilo(siloId);
   const { data: subscriptions, mutate: mutateSubs } = useSubscriptions(siloId);
   const router = useRouter();
-  const [synthesizing, setSynthesizing] = useState(false);
-  const [synthError, setSynthError] = useState("");
   const [sourceResult, setSourceResult] = useState<{ text: string; sources: SourceResult[] } | null>(null);
   const [findingSource, setFindingSource] = useState(false);
   const [subUrl, setSubUrl] = useState("");
@@ -64,19 +62,6 @@ export default function SiloDetailPage({
       body: JSON.stringify({ status }),
     });
     mutate();
-  }
-
-  async function handleSynthesize() {
-    setSynthesizing(true);
-    setSynthError("");
-    const res = await fetch(`/api/silos/${id}/synthesize`, { method: "POST" });
-    if (res.ok) {
-      mutate();
-    } else {
-      const data = await res.json();
-      setSynthError(data.error || "Synthesis failed");
-    }
-    setSynthesizing(false);
   }
 
   async function handleSource(text: string) {
@@ -349,33 +334,19 @@ export default function SiloDetailPage({
       )}
 
       <div className="border-t pt-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Synthesis</h2>
-          <Button
-            onClick={handleSynthesize}
-            disabled={synthesizing || accepted.length === 0}
-          >
-            {synthesizing ? (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4 mr-1" />
-            )}
-            {synthesizing ? "Synthesizing..." : silo.synthesis ? "Regenerate" : "Synthesize"}
-          </Button>
-        </div>
-        {synthError && <p className="text-sm text-destructive">{synthError}</p>}
-        {accepted.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            Accept at least one content item to enable synthesis.
-          </p>
-        )}
-        {silo.synthesis && (
-          <SelectionJournal source="silo-synthesis" showSource onSource={handleSource}>
-            <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-              {silo.synthesis}
-            </div>
-          </SelectionJournal>
-        )}
+        <SynthesisSection
+          synthesizeUrl={`/api/silos/${id}/synthesize`}
+          name={silo.name}
+          sourceLabel="silo-synthesis"
+          synthesis={silo.synthesis}
+          synthesizedAt={silo.synthesizedAt}
+          synthesisHistory={silo.synthesisHistory ?? []}
+          itemCount={accepted.length}
+          minItems={1}
+          onSynthesized={() => mutate()}
+          showSource
+          onSource={handleSource}
+        />
 
         {findingSource && (
           <Card className="p-4 border-primary/30 bg-primary/5">
