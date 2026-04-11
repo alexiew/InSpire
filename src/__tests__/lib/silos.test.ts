@@ -240,4 +240,129 @@ describe("silo synthesis", () => {
     const { silos } = await loadModules();
     await expect(silos.synthesizeSilo(999)).rejects.toThrow("not found");
   });
+
+  it("saves synthesis to history", async () => {
+    const { callClaude } = await import("@/lib/claude");
+    const mockClaude = callClaude as ReturnType<typeof vi.fn>;
+    mockClaude.mockResolvedValue("First synthesis.");
+
+    const { silos, content } = await loadModules();
+    const silo = silos.createSilo("AI Ethics");
+
+    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube", silo.id);
+    content.updateContent(c1.id, { title: "Video A", summary: "Summary A", status: "accepted" });
+
+    const c2 = content.createContent("https://youtube.com/watch?v=b", "b", "youtube", silo.id);
+    content.updateContent(c2.id, { title: "Video B", summary: "Summary B", status: "accepted" });
+
+    await silos.synthesizeSilo(silo.id);
+
+    const history = silos.listSiloSynthesisHistory(silo.id);
+    expect(history).toHaveLength(1);
+    expect(history[0].synthesis).toBe("First synthesis.");
+    expect(history[0].contentIds).toContain(c1.id);
+    expect(history[0].contentIds).toContain(c2.id);
+  });
+
+  it("accumulates history across multiple syntheses", async () => {
+    const { callClaude } = await import("@/lib/claude");
+    const mockClaude = callClaude as ReturnType<typeof vi.fn>;
+
+    const { silos, content } = await loadModules();
+    const silo = silos.createSilo("AI Ethics");
+
+    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube", silo.id);
+    content.updateContent(c1.id, { title: "Video A", summary: "Summary A", status: "accepted" });
+
+    const c2 = content.createContent("https://youtube.com/watch?v=b", "b", "youtube", silo.id);
+    content.updateContent(c2.id, { title: "Video B", summary: "Summary B", status: "accepted" });
+
+    mockClaude.mockResolvedValue("First synthesis.");
+    await silos.synthesizeSilo(silo.id);
+
+    // Add a third item and re-synthesize
+    const c3 = content.createContent("https://youtube.com/watch?v=c", "c", "youtube", silo.id);
+    content.updateContent(c3.id, { title: "Video C", summary: "Summary C", status: "accepted" });
+
+    mockClaude.mockResolvedValue("Second synthesis.");
+    await silos.synthesizeSilo(silo.id);
+
+    const history = silos.listSiloSynthesisHistory(silo.id);
+    expect(history).toHaveLength(2);
+    // Newest first
+    expect(history[0].synthesis).toBe("Second synthesis.");
+    expect(history[1].synthesis).toBe("First synthesis.");
+  });
+
+  it("uses incremental prompt when previous synthesis exists", async () => {
+    const { callClaude } = await import("@/lib/claude");
+    const mockClaude = callClaude as ReturnType<typeof vi.fn>;
+
+    const { silos, content } = await loadModules();
+    const silo = silos.createSilo("AI Ethics");
+
+    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube", silo.id);
+    content.updateContent(c1.id, { title: "Video A", summary: "Summary A", status: "accepted" });
+
+    const c2 = content.createContent("https://youtube.com/watch?v=b", "b", "youtube", silo.id);
+    content.updateContent(c2.id, { title: "Video B", summary: "Summary B", status: "accepted" });
+
+    mockClaude.mockResolvedValue("First synthesis.");
+    await silos.synthesizeSilo(silo.id);
+
+    // Add new content
+    const c3 = content.createContent("https://youtube.com/watch?v=c", "c", "youtube", silo.id);
+    content.updateContent(c3.id, { title: "Video C", summary: "Summary C", status: "accepted" });
+
+    mockClaude.mockResolvedValue("Updated synthesis.");
+    await silos.synthesizeSilo(silo.id);
+
+    // The second call should include previous synthesis and only new content
+    const prompt = mockClaude.mock.calls[1][0];
+    expect(prompt).toContain("First synthesis.");
+    expect(prompt).toContain("Summary C");
+    expect(prompt).not.toContain("Summary A");
+    expect(prompt).not.toContain("Summary B");
+  });
+
+  it("throws when synthesis is up to date", async () => {
+    const { callClaude } = await import("@/lib/claude");
+    const mockClaude = callClaude as ReturnType<typeof vi.fn>;
+    mockClaude.mockResolvedValue("Synthesis result.");
+
+    const { silos, content } = await loadModules();
+    const silo = silos.createSilo("AI Ethics");
+
+    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube", silo.id);
+    content.updateContent(c1.id, { title: "Video A", summary: "Summary A", status: "accepted" });
+
+    const c2 = content.createContent("https://youtube.com/watch?v=b", "b", "youtube", silo.id);
+    content.updateContent(c2.id, { title: "Video B", summary: "Summary B", status: "accepted" });
+
+    await silos.synthesizeSilo(silo.id);
+
+    await expect(silos.synthesizeSilo(silo.id)).rejects.toThrow("up to date");
+    expect(mockClaude).toHaveBeenCalledOnce();
+  });
+
+  it("deletes synthesis history when silo is deleted", async () => {
+    const { callClaude } = await import("@/lib/claude");
+    const mockClaude = callClaude as ReturnType<typeof vi.fn>;
+    mockClaude.mockResolvedValue("Synthesis result.");
+
+    const { silos, content } = await loadModules();
+    const silo = silos.createSilo("AI Ethics");
+
+    const c1 = content.createContent("https://youtube.com/watch?v=a", "a", "youtube", silo.id);
+    content.updateContent(c1.id, { title: "Video A", summary: "Summary A", status: "accepted" });
+
+    const c2 = content.createContent("https://youtube.com/watch?v=b", "b", "youtube", silo.id);
+    content.updateContent(c2.id, { title: "Video B", summary: "Summary B", status: "accepted" });
+
+    await silos.synthesizeSilo(silo.id);
+    expect(silos.listSiloSynthesisHistory(silo.id)).toHaveLength(1);
+
+    silos.deleteSilo(silo.id);
+    expect(silos.listSiloSynthesisHistory(silo.id)).toHaveLength(0);
+  });
 });

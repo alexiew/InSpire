@@ -92,10 +92,96 @@ export function getSilo(id: number): SiloWithItems | undefined {
   };
 }
 
+export interface SiloSynthesisRecord {
+  id: number;
+  synthesis: string;
+  contentIds: string[];
+  createdAt: string;
+}
+
 export function deleteSilo(id: number): boolean {
   const db = getDb();
   const result = db.prepare("DELETE FROM silos WHERE id = ?").run(id);
   return result.changes > 0;
+}
+
+export function listSiloSynthesisHistory(siloId: number): SiloSynthesisRecord[] {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT id, synthesis, content_ids, created_at FROM silo_synthesis_history WHERE silo_id = ? ORDER BY id DESC")
+    .all(siloId) as { id: number; synthesis: string; content_ids: string; created_at: string }[];
+  return rows.map((row) => ({
+    id: row.id,
+    synthesis: row.synthesis,
+    contentIds: JSON.parse(row.content_ids),
+    createdAt: row.created_at,
+  }));
+}
+
+function getLatestSiloSynthesisRecord(siloId: number): { synthesis: string; contentIds: string[] } | undefined {
+  const db = getDb();
+  const row = db
+    .prepare("SELECT synthesis, content_ids FROM silo_synthesis_history WHERE silo_id = ? ORDER BY id DESC LIMIT 1")
+    .get(siloId) as { synthesis: string; content_ids: string } | undefined;
+  if (!row) return undefined;
+  return { synthesis: row.synthesis, contentIds: JSON.parse(row.content_ids) };
+}
+
+function formatSiloItem(item: ContentItem): string {
+  const parts = [`### ${item.title}${item.author ? ` (by ${item.author})` : ""}`];
+  if (item.summary) parts.push(`**Summary:** ${item.summary}`);
+  if (item.claims.length > 0) {
+    parts.push("**Claims:**");
+    parts.push(...item.claims.map((c) => `  - ${c}`));
+  }
+  if (item.topics.length > 0) {
+    parts.push(`**Topics:** ${item.topics.join(", ")}`);
+  }
+  if (item.people.length > 0) {
+    parts.push(`**People:** ${item.people.join(", ")}`);
+  }
+  return parts.join("\n");
+}
+
+function buildSiloSynthesisPrompt(siloName: string, items: ContentItem[]): string {
+  return `You are analyzing ${items.length} pieces of content collected in a research silo called "${siloName}".
+
+CONTENT:
+${items.map(formatSiloItem).join("\n\n")}
+
+Produce a comprehensive synthesis covering:
+- Key themes and recurring ideas across these sources
+- Points of agreement and contradiction between sources
+- Notable people and their perspectives
+- Gaps in coverage — what topics are missing or underexplored?
+- Content angles and ideas that emerge from combining these perspectives
+
+Be specific and cite sources by title. The synthesis should be actionable for someone creating content on this topic.`;
+}
+
+function buildIncrementalSiloPrompt(siloName: string, previousSynthesis: string, newItems: ContentItem[]): string {
+  const plural = newItems.length === 1 ? "source" : "sources";
+
+  return `You are updating a synthesis for a research silo called "${siloName}".
+
+Here is the existing synthesis based on previously analyzed sources:
+
+---
+${previousSynthesis}
+---
+
+${newItems.length} new ${plural} to integrate:
+
+${newItems.map(formatSiloItem).join("\n\n")}
+
+Produce an updated synthesis that integrates the new material. Maintain the same structure:
+- Key themes and recurring ideas across these sources
+- Points of agreement and contradiction between sources
+- Notable people and their perspectives
+- Gaps in coverage — what topics are missing or underexplored?
+- Content angles and ideas that emerge from combining these perspectives
+
+Incorporate the new sources naturally. If they reinforce existing points, strengthen them with the new evidence. If they contradict existing points, note the disagreement. Add any new themes or insights they introduce. Be specific and cite sources by title.`;
 }
 
 export async function synthesizeSilo(id: number): Promise<Silo> {
@@ -113,41 +199,32 @@ export async function synthesizeSilo(id: number): Promise<Silo> {
     throw new Error("No accepted content in this silo");
   }
 
-  const itemLines = items.map((item) => {
-    const parts = [`### ${item.title}${item.author ? ` (by ${item.author})` : ""}`];
-    if (item.summary) parts.push(`**Summary:** ${item.summary}`);
-    if (item.claims.length > 0) {
-      parts.push("**Claims:**");
-      parts.push(...item.claims.map((c) => `  - ${c}`));
+  const currentIds = items.map((item) => item.id);
+  const lastRecord = getLatestSiloSynthesisRecord(id);
+
+  let prompt: string;
+
+  if (lastRecord) {
+    const previousIds = new Set(lastRecord.contentIds);
+    const newItems = items.filter((item) => !previousIds.has(item.id));
+
+    if (newItems.length === 0) {
+      throw new Error("Synthesis is up to date — no new content since last generation");
     }
-    if (item.topics.length > 0) {
-      parts.push(`**Topics:** ${item.topics.join(", ")}`);
-    }
-    if (item.people.length > 0) {
-      parts.push(`**People:** ${item.people.join(", ")}`);
-    }
-    return parts.join("\n");
-  });
 
-  const prompt = `You are analyzing ${items.length} pieces of content collected in a research silo called "${row.name}".
-
-CONTENT:
-${itemLines.join("\n\n")}
-
-Produce a comprehensive synthesis covering:
-- Key themes and recurring ideas across these sources
-- Points of agreement and contradiction between sources
-- Notable people and their perspectives
-- Gaps in coverage — what topics are missing or underexplored?
-- Content angles and ideas that emerge from combining these perspectives
-
-Be specific and cite sources by title. The synthesis should be actionable for someone creating content on this topic.`;
+    prompt = buildIncrementalSiloPrompt(row.name, lastRecord.synthesis, newItems);
+  } else {
+    prompt = buildSiloSynthesisPrompt(row.name, items);
+  }
 
   const synthesis = await callClaude(prompt);
   const now = new Date().toISOString();
 
   db.prepare("UPDATE silos SET synthesis = ?, synthesized_at = ? WHERE id = ?")
     .run(synthesis, now, id);
+
+  db.prepare("INSERT INTO silo_synthesis_history (silo_id, synthesis, content_ids, created_at) VALUES (?, ?, ?, ?)")
+    .run(id, synthesis, JSON.stringify(currentIds), now);
 
   return rowToSilo(
     db.prepare("SELECT * FROM silos WHERE id = ?").get(id) as SiloRow

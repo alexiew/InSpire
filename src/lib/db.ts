@@ -174,6 +174,14 @@ function initSchema(db: Database.Database): void {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS silo_synthesis_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      silo_id INTEGER NOT NULL REFERENCES silos(id) ON DELETE CASCADE,
+      synthesis TEXT NOT NULL,
+      content_ids TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
