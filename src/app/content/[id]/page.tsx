@@ -5,7 +5,7 @@
 
 import { use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, ExternalLink, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, Download, ExternalLink, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/content/status-badge";
 import { SelectionJournal } from "@/components/content/selection-journal";
@@ -13,6 +13,7 @@ import { TopicEditor } from "@/components/content/topic-editor";
 import { PeopleEditor } from "@/components/content/people-editor";
 import { TranscriptSection } from "@/components/content/transcript-section";
 import { useContentItem } from "@/hooks/use-content";
+import { downloadPdf, formatContentAsMarkdown } from "@/lib/pdf";
 
 export default function ContentDetailPage({
   params,
@@ -57,10 +58,28 @@ export default function ContentDetailPage({
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back
         </Button>
-        <Button variant="destructive" size="sm" onClick={handleDelete}>
-          <Trash2 className="mr-1 h-4 w-4" />
-          Delete
-        </Button>
+        <div className="flex gap-2">
+          {item.summary && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                downloadPdf(
+                  formatContentAsMarkdown(item),
+                  item.title,
+                  item.createdAt,
+                )
+              }
+            >
+              <Download className="mr-1 h-4 w-4" />
+              PDF
+            </Button>
+          )}
+          <Button variant="destructive" size="sm" onClick={handleDelete}>
+            <Trash2 className="mr-1 h-4 w-4" />
+            Delete
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-2">

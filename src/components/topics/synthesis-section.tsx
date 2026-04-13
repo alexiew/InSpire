@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SelectionJournal } from "@/components/content/selection-journal";
 import { Sparkles, RefreshCw, ChevronDown, ChevronRight, Download } from "lucide-react";
+import { downloadPdf } from "@/lib/pdf";
 export interface SynthesisRecord {
   id: number;
   synthesis: string;
@@ -27,126 +28,6 @@ interface SynthesisSectionProps {
   onSynthesized: () => void;
   showSource?: boolean;
   onSource?: (text: string) => void;
-}
-
-async function downloadPdf(content: string, title: string, date: string) {
-  const { jsPDF } = await import("jspdf");
-
-  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 15;
-  const maxWidth = pageWidth - margin * 2;
-  const footerY = pageHeight - 8;
-  let y = margin;
-
-  function addFooter() {
-    const prevFontSize = doc.getFontSize();
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(160);
-    doc.text("InSpire", margin, footerY);
-    const pageNum = `${doc.getNumberOfPages()}`;
-    doc.text(pageNum, pageWidth - margin, footerY, { align: "right" });
-    doc.setTextColor(0);
-    doc.setFontSize(prevFontSize);
-    doc.setFont("helvetica", "normal");
-  }
-
-  function checkPageBreak(needed: number) {
-    if (y + needed > footerY - 4) {
-      addFooter();
-      doc.addPage();
-      y = margin;
-    }
-  }
-
-  // Header — branding
-  doc.setFontSize(24);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(80);
-  doc.text("InSpire", margin, y);
-  y += 5;
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(140);
-  doc.text("Simple solutions to impossible problems", margin, y);
-  y += 4;
-  doc.setDrawColor(200);
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 10;
-
-  // Title
-  doc.setTextColor(0);
-  doc.setFontSize(20);
-  doc.setFont("helvetica", "bold");
-  const titleLines = doc.splitTextToSize(title, maxWidth);
-  checkPageBreak(titleLines.length * 8);
-  doc.text(titleLines, margin, y);
-  y += titleLines.length * 8;
-
-  // Date
-  const dateStr = new Date(date).toLocaleDateString(undefined, {
-    year: "numeric", month: "long", day: "numeric",
-  });
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(120);
-  doc.text(dateStr, margin, y);
-  y += 8;
-  doc.setTextColor(0);
-
-  // Content — line by line with basic markdown support
-  const lines = content.split("\n");
-  for (const line of lines) {
-    if (line.startsWith("### ")) {
-      y += 3;
-      doc.setFontSize(13);
-      doc.setFont("helvetica", "bold");
-      const wrapped = doc.splitTextToSize(line.slice(4), maxWidth);
-      checkPageBreak(wrapped.length * 5.5);
-      doc.text(wrapped, margin, y);
-      y += wrapped.length * 5.5 + 1;
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-    } else if (line.startsWith("## ")) {
-      y += 5;
-      doc.setFontSize(15);
-      doc.setFont("helvetica", "bold");
-      const wrapped = doc.splitTextToSize(line.slice(3), maxWidth);
-      checkPageBreak(wrapped.length * 6.5);
-      doc.text(wrapped, margin, y);
-      y += wrapped.length * 6.5 + 2;
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-    } else if (line.startsWith("# ")) {
-      y += 5;
-      doc.setFontSize(18);
-      doc.setFont("helvetica", "bold");
-      const wrapped = doc.splitTextToSize(line.slice(2), maxWidth);
-      checkPageBreak(wrapped.length * 7.5);
-      doc.text(wrapped, margin, y);
-      y += wrapped.length * 7.5 + 2;
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-    } else if (line.trim() === "") {
-      y += 3;
-    } else {
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      const text = line.replace(/\*\*(.*?)\*\*/g, "$1");
-      const wrapped = doc.splitTextToSize(text, maxWidth);
-      checkPageBreak(wrapped.length * 5);
-      doc.text(wrapped, margin, y);
-      y += wrapped.length * 5;
-    }
-  }
-
-  // Footer on the last page
-  addFooter();
-
-  const filename = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-synthesis-${new Date(date).toISOString().slice(0, 10)}.pdf`;
-  doc.save(filename);
 }
 
 function PastSynthesisCard({
@@ -192,7 +73,7 @@ function PastSynthesisCard({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => downloadPdf(record.synthesis, name, record.createdAt)}
+              onClick={() => downloadPdf(record.synthesis, name, record.createdAt, "synthesis")}
             >
               <Download className="mr-1 h-4 w-4" />
               PDF
@@ -263,7 +144,7 @@ export function SynthesisSection({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => downloadPdf(synthesis, name, synthesizedAt)}
+              onClick={() => downloadPdf(synthesis, name, synthesizedAt, "synthesis")}
             >
               <Download className="mr-1 h-4 w-4" />
               PDF
