@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSilo, deleteSilo, listSiloSynthesisHistory } from "@/lib/silos";
 import { createContent, updateContent, type SourceType } from "@/lib/content";
 import { extractVideoId } from "@/lib/youtube";
-import { processContent } from "@/lib/process-content";
+import { enqueueProcessing } from "@/lib/process-queue";
 
 export async function GET(
   _request: NextRequest,
@@ -47,7 +47,7 @@ export async function POST(
       transcript: transcript.trim(),
       ...(hints ? { extractionHints: hints } : {}),
     });
-    processContent(item.id).catch(() => {});
+    enqueueProcessing(item.id);
     return NextResponse.json(item, { status: 201 });
   }
 
@@ -73,7 +73,7 @@ export async function POST(
   if (hints) {
     updateContent(item.id, { extractionHints: hints });
   }
-  processContent(item.id).catch(() => {});
+  enqueueProcessing(item.id);
 
   return NextResponse.json(item, { status: 201 });
 }

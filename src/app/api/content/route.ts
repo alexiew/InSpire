@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listContent, createContent, updateContent, type SourceType } from "@/lib/content";
 import { extractVideoId } from "@/lib/youtube";
-import { processContent } from "@/lib/process-content";
+import { enqueueProcessing } from "@/lib/process-queue";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       updates.extractionHints = body.extractionHints.trim();
     }
     updateContent(item.id, updates);
-    processContent(item.id).catch(() => {});
+    enqueueProcessing(item.id);
     return NextResponse.json(item, { status: 201 });
   }
 
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     updateContent(item.id, updates);
   }
 
-  processContent(item.id).catch(() => {});
+  enqueueProcessing(item.id);
 
   return NextResponse.json(item, { status: 201 });
 }

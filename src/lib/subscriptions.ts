@@ -6,7 +6,7 @@ import { createContent, updateContent } from "./content";
 import { fetchChannelVideos } from "./youtube";
 import { fetchPodcastFeed } from "./podcast";
 import { fetchBlogFeed } from "./blog";
-import { processContent } from "./process-content";
+import { enqueueProcessing } from "./process-queue";
 import { getSetting } from "./settings";
 
 export interface Subscription {
@@ -169,7 +169,7 @@ async function checkYouTubeSubscription(row: SubscriptionRow, maxItems: number, 
     if (row.extraction_hints) {
       updateContent(item.id, { extractionHints: row.extraction_hints });
     }
-    processContent(item.id, minWords > 0 ? { minTranscriptWords: minWords } : undefined).catch(() => {});
+    enqueueProcessing(item.id, minWords > 0 ? { minTranscriptWords: minWords } : undefined);
     ingested++;
   }
 
@@ -192,7 +192,7 @@ async function checkPodcastSubscription(row: SubscriptionRow, maxItems: number, 
       thumbnailUrl: feed.imageUrl,
       ...(row.extraction_hints ? { extractionHints: row.extraction_hints } : {}),
     });
-    processContent(item.id, minWords > 0 ? { minTranscriptWords: minWords } : undefined).catch(() => {});
+    enqueueProcessing(item.id, minWords > 0 ? { minTranscriptWords: minWords } : undefined);
     ingested++;
   }
 
@@ -214,7 +214,7 @@ async function checkBlogSubscription(row: SubscriptionRow, maxItems: number, min
       author: feed.title,
       ...(row.extraction_hints ? { extractionHints: row.extraction_hints } : {}),
     });
-    processContent(item.id, minWords > 0 ? { minTranscriptWords: minWords } : undefined).catch(() => {});
+    enqueueProcessing(item.id, minWords > 0 ? { minTranscriptWords: minWords } : undefined);
     ingested++;
   }
 
