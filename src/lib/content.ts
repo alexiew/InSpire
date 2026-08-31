@@ -202,6 +202,14 @@ export function listRecent(): ContentItem[] {
   return rows.map(rowToContentItem);
 }
 
+export function listProcessing(): ContentItem[] {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT * FROM content WHERE status = 'processing' ORDER BY created_at ASC")
+    .all() as ContentRow[];
+  return rows.map(rowToContentItem);
+}
+
 export function listLibrary(search?: string): ContentItem[] {
   const db = getDb();
   if (search) {

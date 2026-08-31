@@ -489,3 +489,37 @@ describe("listLibrary", () => {
     expect(listLibrary()).toHaveLength(3);
   });
 });
+
+describe("listProcessing", () => {
+  it("returns empty array when nothing is processing", async () => {
+    const { listProcessing } = await loadModule();
+    expect(listProcessing()).toEqual([]);
+  });
+
+  it("returns items left in the processing state", async () => {
+    const { listProcessing, createContent } = await loadModule();
+    const item = createContent("https://youtube.com/watch?v=aaa", "aaa", "youtube");
+    const stuck = listProcessing();
+    expect(stuck).toHaveLength(1);
+    expect(stuck[0].id).toBe(item.id);
+  });
+
+  it("excludes items that reached a terminal state", async () => {
+    const { listProcessing, createContent, updateContent } = await loadModule();
+    const done = createContent("https://youtube.com/watch?v=aaa", "aaa", "youtube");
+    const failed = createContent("https://youtube.com/watch?v=bbb", "bbb", "youtube");
+    const running = createContent("https://youtube.com/watch?v=ccc", "ccc", "youtube");
+    updateContent(done.id, { status: "ready" });
+    updateContent(failed.id, { status: "error" });
+    const stuck = listProcessing();
+    expect(stuck.map((i) => i.id)).toEqual([running.id]);
+  });
+
+  it("includes items belonging to a silo", async () => {
+    const { listProcessing, createContent } = await loadModule();
+    const { createSilo } = await import("@/lib/silos");
+    const silo = createSilo("Test silo");
+    const item = createContent("https://youtube.com/watch?v=aaa", "aaa", "youtube", silo.id);
+    expect(listProcessing().map((i) => i.id)).toContain(item.id);
+  });
+});
