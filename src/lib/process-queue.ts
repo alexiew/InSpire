@@ -2,6 +2,7 @@
 // ABOUTME: Caps simultaneous summarize + claude subprocesses so a large refresh can't exhaust memory.
 
 import { processContent } from "./process-content";
+import { listProcessing } from "./content";
 
 type Task = () => Promise<void>;
 
@@ -28,4 +29,14 @@ export function enqueue(task: Task): void {
 
 export function enqueueProcessing(id: string, options?: { minTranscriptWords?: number }): void {
   enqueue(() => processContent(id, options).catch(() => {}));
+}
+
+// The queue lives in memory, so anything in flight when the server stops is
+// stranded in the processing state. Pick those items back up on the next boot.
+export function requeueStuckProcessing(): number {
+  const stuck = listProcessing();
+  for (const item of stuck) {
+    enqueueProcessing(item.id);
+  }
+  return stuck.length;
 }
