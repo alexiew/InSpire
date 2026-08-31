@@ -1,7 +1,7 @@
 // ABOUTME: Podcast RSS feed parsing and transcript extraction.
 // ABOUTME: Provides feed parsing, fetching, and audio transcription via summarize CLI.
 
-import { execFile } from "child_process";
+import { runSummarize, AUDIO_TIMEOUT_MS } from "./summarize";
 
 export interface PodcastEpisode {
   guid: string;
@@ -73,23 +73,8 @@ export function detectFeedType(xml: string): FeedType {
 }
 
 export function fetchPodcastTranscript(audioUrl: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      "summarize",
-      [audioUrl, "--extract"],
-      { maxBuffer: 10 * 1024 * 1024 },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(new Error(stderr || error.message));
-          return;
-        }
-        const transcript = stdout.trim();
-        if (!transcript) {
-          reject(new Error("Empty transcript returned"));
-          return;
-        }
-        resolve(transcript);
-      }
-    );
+  return runSummarize([audioUrl, "--extract"], {
+    timeoutMs: AUDIO_TIMEOUT_MS,
+    emptyMessage: "Empty transcript returned",
   });
 }

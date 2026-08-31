@@ -1,7 +1,7 @@
 // ABOUTME: Blog RSS/Atom feed parsing and article text extraction.
 // ABOUTME: Provides feed parsing, fetching, and article content extraction via summarize CLI.
 
-import { execFile } from "child_process";
+import { runSummarize } from "./summarize";
 
 export interface BlogArticle {
   guid: string;
@@ -110,23 +110,7 @@ export async function fetchPageTitle(url: string): Promise<string> {
 }
 
 export function fetchArticleText(articleUrl: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      "summarize",
-      [articleUrl, "--extract"],
-      { maxBuffer: 10 * 1024 * 1024 },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(new Error(stderr || error.message));
-          return;
-        }
-        const text = stdout.trim();
-        if (!text) {
-          reject(new Error("Empty article text returned"));
-          return;
-        }
-        resolve(text);
-      }
-    );
+  return runSummarize([articleUrl, "--extract"], {
+    emptyMessage: "Empty article text returned",
   });
 }

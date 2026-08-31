@@ -2,6 +2,7 @@
 // ABOUTME: Uses oEmbed API for metadata and summarize CLI for transcripts.
 
 import { execFile } from "child_process";
+import { runSummarize } from "./summarize";
 
 export function isYouTubeUrl(url: string): boolean {
   return /youtube\.com|youtu\.be/i.test(url);
@@ -152,24 +153,8 @@ function fetchChannelVideosViaDlp(channelId: string, maxItems: number): Promise<
 
 function fetchTranscriptWithMode(videoId: string, mode: string): Promise<string> {
   const url = `https://www.youtube.com/watch?v=${videoId}`;
-  return new Promise((resolve, reject) => {
-    execFile(
-      "summarize",
-      [url, "--youtube", mode, "--extract"],
-      { maxBuffer: 10 * 1024 * 1024 },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(new Error(stderr || error.message));
-          return;
-        }
-        const transcript = stdout.trim();
-        if (!transcript) {
-          reject(new Error("Empty transcript returned"));
-          return;
-        }
-        resolve(transcript);
-      }
-    );
+  return runSummarize([url, "--youtube", mode, "--extract"], {
+    emptyMessage: "Empty transcript returned",
   });
 }
 
