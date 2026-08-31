@@ -71,6 +71,7 @@ export async function processContent(id: string, options?: ProcessOptions): Prom
       claims: result.claims,
       people,
       status: "ready",
+      error: "",
     });
 
     // Rebuild topic index
